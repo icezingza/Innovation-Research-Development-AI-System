@@ -18,8 +18,8 @@ class ReflectionResult(BaseModel):
 class ReflectionEngine:
     """Analyzes reasoning quality and identifies structural gaps."""
 
-    _REQUIRED_FIELDS = ("evidence", "assumptions", "conclusion")
-    _QUALITY_FIELDS = ("confidence", "alternatives", "caveats")
+    _REQUIRED_FIELDS = ("evidence", "conclusion")
+    _QUALITY_FIELDS = ("confidence", "assumptions", "alternatives", "caveats")
 
     async def reflect(self, reasoning: dict[str, Any]) -> ReflectionResult:
         with tracer.start_as_current_span("reasoning.reflect"):

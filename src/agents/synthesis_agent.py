@@ -117,6 +117,7 @@ class SynthesisAgent(BaseAgent):
                     source_agent_id=self.agent_id,
                     payload={
                         "goal": reasoning["goal"],
+                        "conclusion": reasoning["conclusion"],
                         "confidence": reasoning["confidence"],
                         "source_count": reasoning["source_count"],
                         "best_hypothesis_id": reasoning.get("best_hypothesis_id", ""),

@@ -153,15 +153,14 @@ class ResearchMemory:
     async def _store_qdrant(self, entry: MemoryEntry) -> None:
         try:
             await self._context.store_hypothesis(
-                hypothesis_id=entry.entry_id,
-                statement=entry.statement,
-                confidence=entry.confidence,
-                metadata={
-                    "topic": entry.topic,
-                    "source": entry.source,
-                    "session_id": entry.session_id,
+                hypothesis={
+                    "statement": entry.statement,
+                    "confidence": entry.confidence,
                     "generation": entry.generation,
+                    "source": entry.source,
                 },
+                question=entry.topic,
+                task_id=entry.entry_id,
             )
         except Exception as exc:
             logger.warning(
