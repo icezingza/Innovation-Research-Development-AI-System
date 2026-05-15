@@ -2,6 +2,7 @@ import time
 
 from pydantic import BaseModel
 
+from src.reasoning.math_engine.golden_bayesian import GoldenBayesian
 from src.reasoning.reasoning_trace import ReasoningTrace, TraceEntry
 from src.reasoning.reflection_engine import ReflectionEngine
 from src.research.hypothesis_evolution import Hypothesis, HypothesisEvolutionEngine
@@ -86,11 +87,24 @@ class RecursiveReasoningLoop:
                 }
             )
 
+            # Detect contradiction: quality fell compared to previous iteration
+            is_contradiction = depth > 1 and reflection.quality_score < prev_quality
+
+            # Apply Golden Ratio Bayesian update to hypothesis confidence
+            golden_confidence = GoldenBayesian.update_confidence(
+                prior=evolution.evolved.confidence,
+                evidence_strength=reflection.quality_score,
+                is_contradiction=is_contradiction,
+            )
+            current = evolution.evolved.model_copy(
+                update={"confidence": round(golden_confidence, 4)}
+            )
+
             improvement = abs(reflection.quality_score - prev_quality)
             iterations.append(
                 IterationRecord(
                     depth=depth,
-                    hypothesis=evolution.evolved,
+                    hypothesis=current,
                     quality_score=reflection.quality_score,
                     changes=evolution.changes,
                     improvement_delta=round(improvement, 4),
@@ -108,8 +122,6 @@ class RecursiveReasoningLoop:
                         ),
                     )
                 )
-
-            current = evolution.evolved
 
             if reflection.quality_score >= cfg.convergence_threshold:
                 convergence_reason = "quality_threshold_reached"
