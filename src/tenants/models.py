@@ -1,9 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import String, DateTime, ForeignKey, Boolean, Enum as SAEnum, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 
 from src.memory.schema import Base
 
@@ -14,7 +13,7 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=lambda: str(uuid.uuid4())
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
@@ -24,8 +23,8 @@ class Tenant(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
     members: Mapped[list["TenantMember"]] = relationship(
@@ -39,7 +38,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=lambda: str(uuid.uuid4())
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -48,6 +47,12 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
     memberships: Mapped[list["TenantMember"]] = relationship(
         "TenantMember", back_populates="user", cascade="all, delete-orphan"
@@ -60,21 +65,21 @@ class TenantMember(Base):
     __tablename__ = "tenant_members"
 
     id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=lambda: str(uuid.uuid4())
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("tenants.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    role: Mapped[str] = mapped_column(String(50), nullable=False, default="member")
+    role: Mapped[str] = mapped_column(SAEnum("owner", "admin", "member", name="tenant_role"), nullable=False, default="member")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

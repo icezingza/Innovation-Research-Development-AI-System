@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Literal
 
-SYSTEM_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+SYSTEM_TENANT_ID: str = "00000000-0000-0000-0000-000000000001"
 
 
 @dataclass
@@ -9,4 +10,4 @@ class TenantContext:
 
     tenant_id: str
     user_id: str
-    role: str  # owner | admin | member
+    role: Literal["owner", "admin", "member"]
