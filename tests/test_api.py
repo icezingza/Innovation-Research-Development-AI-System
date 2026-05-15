@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.agents.critique_agent import CritiqueAgent
 from src.agents.hypothesis_agent import HypothesisAgent
+from src.agents.memory_agent import MemoryAgent
 from src.agents.research_agent import ResearchAgent
 from src.agents.synthesis_agent import SynthesisAgent
 from src.api.health import router as health_router
 from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
+from src.api.routes.intelligence import router as intelligence_router
 from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
 from src.api.routes.runtime import router as runtime_router
@@ -21,6 +23,7 @@ from src.api.routes.workflows import router as workflows_router
 from src.governance.audit_log import GovernanceAuditLog
 from src.governance.policy_enforcer import PolicyEnforcer
 from src.infrastructure.event_bus import RuntimeEventBus
+from src.memory.research_memory import ResearchMemory
 from src.memory.schema import Base
 from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
@@ -45,6 +48,8 @@ def test_app():
 
         audit_log = GovernanceAuditLog()
         event_bus = RuntimeEventBus()
+        research_memory = ResearchMemory()
+        MemoryAgent(research_memory=research_memory).register(event_bus)
         pipeline = CognitivePipeline(
             agents=[ResearchAgent()],
             policy_enforcer=PolicyEnforcer(audit_log=audit_log),
@@ -81,6 +86,7 @@ def test_app():
         app.state.audit_log = audit_log
         app.state.event_bus = event_bus
         app.state.coordinator = coordinator
+        app.state.research_memory = research_memory
         app.state.service_errors = {}
         yield
 
@@ -94,6 +100,7 @@ def test_app():
     application.include_router(reasoning_router)
     application.include_router(governance_router)
     application.include_router(cognition_router)
+    application.include_router(intelligence_router)
     return application
 
 
@@ -269,3 +276,32 @@ def test_event_stats_endpoint(test_app):
     data = response.json()
     assert "total_events_published" in data
     assert "total_subscribers" in data
+
+
+def test_intelligence_report_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/intelligence/report")
+    assert response.status_code == 200
+    data = response.json()
+    assert "knowledge_base" in data
+    assert "recent_findings" in data
+    assert "total_entries" in data["knowledge_base"]
+
+
+def test_intelligence_recall_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/intelligence/recall?topic=memory+consolidation")
+    assert response.status_code == 200
+    data = response.json()
+    assert "topic" in data
+    assert "entries" in data
+    assert "count" in data
+
+
+def test_intelligence_hypotheses_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/intelligence/hypotheses")
+    assert response.status_code == 200
+    data = response.json()
+    assert "entries" in data
+    assert "count" in data

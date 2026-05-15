@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.agents.critique_agent import CritiqueAgent
 from src.agents.hypothesis_agent import HypothesisAgent
+from src.agents.memory_agent import MemoryAgent
 from src.agents.research_agent import ResearchAgent
 from src.agents.synthesis_agent import SynthesisAgent
 from src.config import get_settings
@@ -17,6 +18,7 @@ from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.context_engine import RESEARCH_COLLECTION, ContextEngine
 from src.memory.knowledge_graph import KnowledgeGraph
 from src.memory.memory_manager import MemoryManager
+from src.memory.research_memory import ResearchMemory
 from src.memory.neo4j_connector import Neo4jKnowledgeConnector
 from src.memory.postgres_memory_store import PostgresMemoryStore
 from src.memory.qdrant_connector import QdrantMemoryConnector
@@ -145,6 +147,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # --- event bus ---
     event_bus = RuntimeEventBus()
 
+    # --- research memory (cross-session knowledge store) ---
+    research_memory = ResearchMemory(
+        context_engine=context_engine,
+        session_factory=session_factory,
+    )
+
+    # --- memory agent: reactive subscriber, persists findings to research_memory ---
+    memory_agent = MemoryAgent(research_memory=research_memory)
+    memory_agent.register(event_bus)
+
     # --- specialized agents ---
     _inf = inference_router if inference_router.enabled else None
     hypothesis_agents = [HypothesisAgent(inference_router=_inf, event_bus=event_bus)]
@@ -191,6 +203,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.audit_log = audit_log
     app.state.event_bus = event_bus
     app.state.coordinator = coordinator
+    app.state.research_memory = research_memory
     app.state.service_errors = errors
     app.state.settings = settings
 

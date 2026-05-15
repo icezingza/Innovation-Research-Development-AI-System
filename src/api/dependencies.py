@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.governance.audit_log import GovernanceAuditLog
 from src.infrastructure.event_bus import RuntimeEventBus
+from src.memory.research_memory import ResearchMemory
 from src.orchestration.agent_coordinator import AgentCoordinator
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
@@ -64,3 +65,7 @@ def get_coordinator(request: Request) -> AgentCoordinator:
     if coordinator is None:
         raise HTTPException(status_code=503, detail="Agent coordinator unavailable")
     return coordinator
+
+
+def get_research_memory(request: Request) -> ResearchMemory:
+    return request.app.state.research_memory

@@ -52,6 +52,26 @@ class WorkflowRecord(Base):
     )
 
 
+class HypothesisRecord(Base):
+    """Persistent cross-session research memory — accumulated knowledge store."""
+
+    __tablename__ = "hypothesis_records"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    topic: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False)
+    session_id: Mapped[str] = mapped_column(String(36), nullable=False, default="")
+    evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    generation: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class ReasoningTraceRecord(Base):
     """Persistent reasoning lineage — every inference operation is logged here."""
 
