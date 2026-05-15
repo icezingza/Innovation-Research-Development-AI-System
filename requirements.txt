@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+qdrant-client
+neo4j
+redis[asyncio]
+sqlalchemy[asyncio]
+asyncpg
+prometheus-client
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+sentence-transformers
+pytest
+pytest-asyncio
+ruff
+pydantic>=2.0
