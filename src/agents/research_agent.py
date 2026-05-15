@@ -10,8 +10,11 @@ from src.research.hypothesis_evolution import Hypothesis, HypothesisEvolutionEng
 class ResearchAgent(BaseAgent):
     """Cognitive agent that forms, evolves, and validates scientific hypotheses.
 
-    Works without an inference client (heuristic mode). When an InferenceClient
-    is injected and enabled it augments hypothesis generation with LLM output.
+    Operates in three modes:
+      - Heuristic: no inference router, no context engine (always available)
+      - LLM-augmented: inference router available, enhances hypothesis generation
+      - Memory-aware: context engine available, retrieves similar past work from
+        Qdrant and stores evolved hypotheses back for future continuity
     """
 
     def __init__(
@@ -19,7 +22,8 @@ class ResearchAgent(BaseAgent):
         reflection_engine: ReflectionEngine | None = None,
         contradiction_analyzer: ContradictionAnalyzer | None = None,
         hypothesis_engine: HypothesisEvolutionEngine | None = None,
-        inference_client: Any | None = None,
+        inference_router: Any | None = None,
+        context_engine: Any | None = None,
     ) -> None:
         super().__init__()
         self._reflection = reflection_engine or ReflectionEngine()
@@ -27,24 +31,47 @@ class ResearchAgent(BaseAgent):
         self._hypothesis = hypothesis_engine or HypothesisEvolutionEngine(
             self._reflection
         )
-        self._inference = inference_client
+        self._inference = inference_router
+        self._context = context_engine
 
     async def perceive(self, context: dict[str, Any]) -> dict[str, Any]:
+        question = str(context.get("question", ""))
+        prior_hypotheses = list(context.get("prior_hypotheses", []))
+        constraints = list(context.get("constraints", []))
+
+        # Enrich perception with semantic memory when context engine is available
+        semantic_context: dict[str, Any] = {}
+        if self._context is not None:
+            packet = await self._context.build(question)
+            semantic_context = {
+                "similar_hypotheses": packet.similar_hypotheses,
+                "continuity_score": packet.continuity_score,
+            }
+            # Inject similar past hypotheses into prior context
+            for h in packet.similar_hypotheses:
+                statement = h.get("statement", "")
+                if statement and statement not in prior_hypotheses:
+                    prior_hypotheses.append(statement)
+
         return {
-            "question": str(context.get("question", "")),
-            "prior_hypotheses": list(context.get("prior_hypotheses", [])),
-            "constraints": list(context.get("constraints", [])),
+            "question": question,
+            "prior_hypotheses": prior_hypotheses,
+            "constraints": constraints,
+            **semantic_context,
         }
 
     async def reason(self, perception: dict[str, Any]) -> dict[str, Any]:
         question = perception["question"]
-
         statement = f"Initial hypothesis for: {question}"
 
-        # Augment with LLM when available
+        # LLM augmentation when inference router is available
         if self._inference is not None and self._inference.enabled:
             llm_output = await self._inference.complete(
-                prompt=f"Generate one testable scientific hypothesis for: {question}"
+                prompt=f"Generate one testable scientific hypothesis for: {question}",
+                system=(
+                    "You are a scientific reasoning assistant. "
+                    "Be concise, falsifiable, and precise. One sentence only."
+                ),
             )
             if llm_output:
                 statement = llm_output.strip()

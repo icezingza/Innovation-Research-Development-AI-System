@@ -1,56 +1,56 @@
-import logging
-
-import httpx
-
+"""Factory module — creates an InferenceRouter wired from Settings."""
 from src.config import Settings
+from src.inference.embedding_provider import (
+    BaseEmbeddingProvider,
+    DisabledEmbeddingProvider,
+    LocalEmbeddingProvider,
+    OpenAIEmbeddingProvider,
+)
+from src.inference.ollama_provider import OllamaProvider
+from src.inference.openai_provider import OpenAIProvider
+from src.inference.router import InferenceRouter
 
-logger = logging.getLogger(__name__)
 
+def create_inference_router(settings: Settings) -> InferenceRouter:
+    """Build a provider list from settings and return a configured router.
 
-class InferenceClient:
-    """Async OpenAI-compatible inference client.
-
-    When inference_api_key is empty the client operates in disabled mode —
-    complete() returns None and callers fall back to heuristic reasoning.
+    Provider priority:
+      1. OpenAI-compatible (if OPENAI_API_KEY is set)
+      2. Ollama (always included; probe() checks reachability at startup)
     """
+    providers = []
 
-    def __init__(self, settings: Settings) -> None:
-        self._base_url = settings.inference_base_url.rstrip("/")
-        self._api_key = settings.inference_api_key
-        self._model = settings.inference_model
-        self._enabled = bool(self._api_key)
+    if settings.openai_api_key:
+        providers.append(
+            OpenAIProvider(
+                api_key=settings.openai_api_key,
+                base_url=settings.openai_base_url,
+                model=settings.default_model,
+            )
+        )
 
-    @property
-    def enabled(self) -> bool:
-        return self._enabled
+    providers.append(
+        OllamaProvider(base_url=settings.ollama_base_url, model=settings.ollama_model)
+    )
 
-    async def complete(
-        self,
-        prompt: str,
-        system: str = "You are a scientific reasoning assistant.",
-        temperature: float = 0.7,
-    ) -> str | None:
-        if not self._enabled:
-            return None
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self._base_url}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self._api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": self._model,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": prompt},
-                        ],
-                        "temperature": temperature,
-                    },
-                )
-                response.raise_for_status()
-                return response.json()["choices"][0]["message"]["content"]
-        except Exception:
-            logger.exception("inference_request_failed")
-            return None
+    return InferenceRouter(providers)
+
+
+def create_embedding_provider(settings: Settings) -> BaseEmbeddingProvider:
+    """Select embedding provider based on settings.
+
+    Priority:
+      1. OpenAI embeddings (if OPENAI_API_KEY is set)
+      2. Local sentence-transformers
+      3. Disabled (graceful degradation)
+    """
+    if settings.openai_api_key:
+        return OpenAIEmbeddingProvider(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            model=settings.embedding_model,
+        )
+    try:
+        return LocalEmbeddingProvider(model_name=settings.embedding_model_local)
+    except Exception:
+        return DisabledEmbeddingProvider()

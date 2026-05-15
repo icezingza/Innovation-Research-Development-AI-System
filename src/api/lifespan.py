@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.agents.research_agent import ResearchAgent
 from src.config import get_settings
 from src.governance.policy_enforcer import PolicyEnforcer
-from src.inference.client import InferenceClient
+from src.inference.client import create_embedding_provider, create_inference_router
+from src.memory.context_engine import RESEARCH_COLLECTION, ContextEngine
 from src.memory.memory_manager import MemoryManager
 from src.memory.neo4j_connector import Neo4jKnowledgeConnector
 from src.memory.postgres_memory_store import PostgresMemoryStore
@@ -20,17 +21,17 @@ from src.runtime.state_manager import RuntimeStateManager
 logger = logging.getLogger(__name__)
 
 
-async def _try_connect(name: str, coro, errors: dict) -> object | None:
+async def _probe(name: str, coro, errors: dict) -> bool:
     try:
-        result = await coro
+        await coro
         logger.info("service_connected", extra={"service": name})
-        return result
+        return True
     except Exception as exc:
         errors[name] = str(exc)
         logger.warning(
             "service_unavailable", extra={"service": name, "error": str(exc)}
         )
-        return None
+        return False
 
 
 @asynccontextmanager
@@ -38,27 +39,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     errors: dict[str, str] = {}
 
-    # --- memory layer ---
+    # --- memory connectors ---
     qdrant = QdrantMemoryConnector(host=settings.qdrant_host, port=settings.qdrant_port)
-    await _try_connect("qdrant", qdrant.healthcheck(), errors)
+    qdrant_ok = await _probe("qdrant", qdrant.healthcheck(), errors)
 
     redis_store = RedisRuntimeStore(url=settings.redis_url)
-    await _try_connect("redis", redis_store.healthcheck(), errors)
+    redis_ok = await _probe("redis", redis_store.healthcheck(), errors)
 
     postgres_store = PostgresMemoryStore(url=settings.postgres_url)
-    pg_ok = await _try_connect("postgres", postgres_store.healthcheck(), errors)
+    pg_ok = await _probe("postgres", postgres_store.healthcheck(), errors)
     if pg_ok:
         try:
             await postgres_store.init_schema()
         except Exception as exc:
             logger.error("schema_init_failed", extra={"error": str(exc)})
+            pg_ok = False
 
     neo4j = Neo4jKnowledgeConnector(
         uri=settings.neo4j_uri,
         user=settings.neo4j_user,
         password=settings.neo4j_password,
     )
-    await _try_connect("neo4j", neo4j.healthcheck(), errors)
+    await _probe("neo4j", neo4j.healthcheck(), errors)
 
     memory = MemoryManager(
         vector_store=qdrant,
@@ -67,19 +69,52 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         persistence_store=postgres_store,
     )
 
-    # --- runtime ---
-    redis_ok = not errors.get("redis")
-    state_manager = RuntimeStateManager(store=redis_store if redis_ok else None)
-    inference_client = InferenceClient(settings)
+    # --- inference layer ---
+    inference_router = create_inference_router(settings)
+    embedding_provider = create_embedding_provider(settings)
+    if inference_router.enabled:
+        logger.info(
+            "inference_ready", extra={"provider": inference_router.active_provider}
+        )
+    else:
+        logger.warning("inference_disabled_heuristic_mode")
 
-    # --- db session factory (None when postgres unavailable) ---
+    # --- Qdrant collection bootstrap ---
+    if qdrant_ok and embedding_provider.enabled:
+        try:
+            await qdrant.ensure_collection(
+                name=RESEARCH_COLLECTION,
+                vector_size=embedding_provider.dimensions,
+            )
+            logger.info(
+                "qdrant_collection_ready",
+                extra={"collection": RESEARCH_COLLECTION},
+            )
+        except Exception as exc:
+            logger.warning("qdrant_collection_init_failed", extra={"error": str(exc)})
+
+    # --- context engine ---
+    context_engine = (
+        ContextEngine(vector_store=qdrant, embedding_provider=embedding_provider)
+        if qdrant_ok and embedding_provider.enabled
+        else None
+    )
+
+    # --- DB session factory ---
     session_factory = None
-    if not errors.get("postgres"):
+    engine = None
+    if pg_ok:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
+    # --- runtime ---
+    state_manager = RuntimeStateManager(store=redis_store if redis_ok else None)
+
     # --- agent pipeline ---
-    agent = ResearchAgent(inference_client=inference_client)
+    agent = ResearchAgent(
+        inference_router=inference_router if inference_router.enabled else None,
+        context_engine=context_engine,
+    )
     pipeline = CognitivePipeline(agents=[agent], policy_enforcer=PolicyEnforcer())
 
     # --- wire app state ---
@@ -87,6 +122,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.state_manager = state_manager
     app.state.pipeline = pipeline
     app.state.db_session = session_factory
+    app.state.inference = inference_router
+    app.state.embedding = embedding_provider
     app.state.service_errors = errors
     app.state.settings = settings
 
@@ -101,6 +138,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await redis_store.close()
     await neo4j.close()
     await postgres_store.dispose()
-    if session_factory is not None:
+    if engine is not None:
         await engine.dispose()
     logger.info("runtime_stopped")

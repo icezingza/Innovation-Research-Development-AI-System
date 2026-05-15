@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, DateTime, Float, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -26,4 +26,22 @@ class ResearchTask(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class ReasoningTraceRecord(Base):
+    """Persistent reasoning lineage — every inference operation is logged here."""
+
+    __tablename__ = "reasoning_traces"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    operation: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_hash: Mapped[str] = mapped_column(String(16), nullable=False)
+    output_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
