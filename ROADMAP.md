@@ -45,30 +45,48 @@ Strategic direction: Distributed Cognitive Infrastructure → Persistent Semanti
 - .env.example, docker-compose with volumes + Prometheus
 - ARCHITECTURE.md
 
-## Remaining
-
 ### Phase 6 — Distributed Execution
-- Redis Streams as EventBus backend (replace in-memory for multi-process)
-- Distributed worker pool (workers across multiple processes/hosts)
-- Task routing by capability/specialization
-- Cross-process state consistency via Redis
+- RedisEventBus (Redis Streams XADD/XREADGROUP for multi-process delivery)
+- create_event_bus() factory (hybrid: Redis when available, in-memory fallback)
+- Consumer group isolation per process; local handlers still fire in same process
+- Alembic migration setup (alembic.ini, env.py, versions/001_initial_schema)
 
-### Phase 7 — Advanced Cognition
-- Self-improvement loop: QualityTracker → auto-tune RecursiveConfig + WorkflowConfig
+### Phase 7 — Adaptive Cognition (Self-Improvement)
+- AdaptiveConfigManager: reads QualityTracker trends, auto-tunes RecursiveConfig + WorkflowConfig
+- Conservative adjustments (±1 depth per cycle, bounded [2, 8])
+- ConfigSnapshot history; wired into lifespan
+
+### Phase 8 — Autonomous Research Agenda
+- ResearchAgenda: scans ResearchMemory for low-confidence / sparse topics → AgendaItem list
+- Priority scoring (combined sparse+low-confidence = priority 9–10)
+- API: GET /intelligence/agenda, POST /intelligence/agenda/run (submits to scheduler)
+
+### Phase 9 — Cognitive Operating System
+- CognitiveSessionManager: persistent session state (goals, workflow IDs, findings count)
+  Redis-backed with in-memory fallback; TTL 24 h; LRU eviction at 512 sessions
+- AgentSpawner: runtime agent creation + scale_coordinator() injection
+- API: POST/GET/DELETE /sessions, POST /sessions/{id}/goals
+
+## Remaining (Future)
+
+### Extended Distributed Execution
+- Distributed worker pool (workers across multiple processes/hosts via Redis Streams)
+- Task routing by agent capability/specialization
+- Cross-process cancellation propagation
+
+### Extended Advanced Cognition
 - Multi-hypothesis tournament (N agents compete, best survives)
 - Temporal reasoning: hypothesis confidence decay over time
 - Cross-domain hypothesis transfer (apply findings across research areas)
 
-### Phase 8 — Scientific Autonomy
-- Autonomous research agenda: system identifies its own research gaps
+### Extended Scientific Autonomy
 - Long-running research sessions with checkpointing
 - Structured literature citation and evidence grounding
 - Peer-review simulation (multi-agent critique panels)
 
-### Phase 9 — Cognitive Operating System
-- Agent spawning: coordinator can create new specialized agents at runtime
-- Persistent agent identities with long-term memory
-- Inter-session learning: performance improves across restarts
+### Extended Cognitive Operating System
+- Persistent agent identities across restarts
+- Inter-session learning: performance improves across sessions
 - Pluggable cognition modules (swap reasoning engines)
 - Multi-tenant cognitive isolation
 

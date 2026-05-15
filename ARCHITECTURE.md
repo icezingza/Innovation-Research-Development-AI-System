@@ -11,6 +11,7 @@ Cognitive Research Runtime — distributed cognitive infrastructure for autonomo
 ├─────────────────────────────────────────────────────────┤
 │                  Orchestration Layer                    │
 │  AgentCoordinator · ResearchWorkflow · CognitivePipeline│
+│  ResearchAgenda                                         │
 ├─────────────────────────────────────────────────────────┤
 │                    Agent Layer                          │
 │  HypothesisAgent · CritiqueAgent · SynthesisAgent      │
@@ -19,10 +20,10 @@ Cognitive Research Runtime — distributed cognitive infrastructure for autonomo
 │                  Reasoning Layer                        │
 │  RecursiveReasoningLoop · DebateRuntime                 │
 │  ReflectionEngine · ContradictionAnalyzer               │
-│  ReasoningTrace · QualityTracker                        │
+│  ReasoningTrace · QualityTracker · AdaptiveConfigManager│
 ├─────────────────────────────────────────────────────────┤
 │                 Infrastructure Layer                    │
-│  RuntimeEventBus · ReactiveSubscriber                   │
+│  RuntimeEventBus · RedisEventBus · ReactiveSubscriber   │
 │  AsyncScheduler · AsyncWorkerPool · StreamManager       │
 ├─────────────────────────────────────────────────────────┤
 │                   Memory Layer                          │
@@ -106,6 +107,26 @@ src/
 ├── security/        API key auth, rate limiter
 └── telemetry/       prometheus metrics, otel tracing
 ```
+
+## Phase 6–9 Additions
+
+### Distributed Event Bus
+`RedisEventBus` extends `RuntimeEventBus` using Redis Streams (`XADD`/`XREADGROUP`). Each process joins a shared consumer group (`cognitive_workers`) and receives events exactly once. Local in-process handlers still fire so single-process deployments are unaffected. `create_event_bus(redis_client)` is a factory: returns `RedisEventBus` when a client is provided, in-memory bus otherwise.
+
+### Adaptive Configuration
+`AdaptiveConfigManager` reads `QualityTracker.analyze()` trends each cycle and adjusts `RecursiveConfig.max_depth` and `WorkflowConfig.max_sub_questions` by ±1, bounded to [2, 8]. Declining quality reduces complexity; improving quality expands it. Snapshots are stored for audit.
+
+### Autonomous Research Agenda
+`ResearchAgenda` scans `ResearchMemory` entries grouped by topic. Topics with average confidence ≤ 0.55 or entry count ≤ 3 are flagged as research gaps and become `AgendaItem`s with a computed priority (1–10). `POST /intelligence/agenda/run` submits high-priority items to `AsyncScheduler` for background investigation via `AgentCoordinator`.
+
+### Cognitive Sessions
+`CognitiveSessionManager` tracks active research contexts: goals, workflow IDs, and findings count. State persists to Redis with a 24 h TTL; an in-memory dict provides fallback and LRU eviction at 512 sessions. Exposed via `POST/GET/DELETE /sessions`.
+
+### Agent Spawner
+`AgentSpawner` instantiates `HypothesisAgent`, `CritiqueAgent`, or `SynthesisAgent` at runtime. `scale_coordinator()` injects a newly spawned agent into a live `AgentCoordinator` without restart, enabling dynamic scaling of parallel hypothesis generation.
+
+### Database Migrations
+Alembic migration setup at `alembic/` with async SQLAlchemy support. Initial migration `001_initial_schema` creates all four core tables with appropriate indices. Run with: `alembic upgrade head`.
 
 ## External Services
 

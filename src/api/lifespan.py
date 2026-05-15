@@ -26,10 +26,14 @@ from src.memory.research_memory import ResearchMemory
 from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
+from src.orchestration.research_agenda import ResearchAgenda
 from src.orchestration.research_workflow import ResearchWorkflow, WorkflowConfig
+from src.reasoning.adaptive_config import AdaptiveConfigManager
 from src.reasoning.quality_tracker import QualityTracker
 from src.reasoning.reasoning_trace import ReasoningTrace
 from src.reasoning.recursive_loop import RecursiveReasoningLoop
+from src.runtime.agent_spawner import AgentSpawner
+from src.runtime.cognitive_session import CognitiveSessionManager
 from src.runtime.scheduler import AsyncScheduler
 from src.runtime.state_manager import RuntimeStateManager
 from src.runtime.stream_manager import StreamManager
@@ -196,6 +200,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config=WorkflowConfig(),
     )
 
+    # --- adaptive config + research agenda + sessions ---
+    workflow_config = WorkflowConfig()
+    adaptive_config = AdaptiveConfigManager(
+        quality_tracker=quality_tracker,
+        workflow_config=workflow_config,
+    )
+    research_agenda = ResearchAgenda(research_memory=research_memory)
+    session_manager = CognitiveSessionManager(
+        redis_client=redis_store.client if redis_ok else None
+    )
+    agent_spawner = AgentSpawner(event_bus=event_bus, inference_router=_inf)
+
     # --- start worker pool ---
     await worker_pool.start()
 
@@ -222,6 +238,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.rate_limiter = rate_limiter
     app.state.service_errors = errors
     app.state.settings = settings
+    app.state.adaptive_config = adaptive_config
+    app.state.research_agenda = research_agenda
+    app.state.session_manager = session_manager
+    app.state.agent_spawner = agent_spawner
 
     if errors:
         logger.warning("runtime_started_degraded", extra={"unavailable": list(errors)})
