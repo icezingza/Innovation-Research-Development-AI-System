@@ -5,11 +5,15 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from src.agents.critique_agent import CritiqueAgent
+from src.agents.hypothesis_agent import HypothesisAgent
 from src.agents.research_agent import ResearchAgent
+from src.agents.synthesis_agent import SynthesisAgent
 from src.config import get_settings
 from src.governance.audit_log import GovernanceAuditLog
 from src.governance.policy_enforcer import PolicyEnforcer
 from src.inference.client import create_embedding_provider, create_inference_router
+from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.context_engine import RESEARCH_COLLECTION, ContextEngine
 from src.memory.knowledge_graph import KnowledgeGraph
 from src.memory.memory_manager import MemoryManager
@@ -17,6 +21,7 @@ from src.memory.neo4j_connector import Neo4jKnowledgeConnector
 from src.memory.postgres_memory_store import PostgresMemoryStore
 from src.memory.qdrant_connector import QdrantMemoryConnector
 from src.memory.redis_runtime_store import RedisRuntimeStore
+from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
 from src.orchestration.research_workflow import ResearchWorkflow, WorkflowConfig
@@ -137,9 +142,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # --- knowledge graph ---
     knowledge_graph = KnowledgeGraph(connector=neo4j) if neo4j_ok else None
 
-    # --- autonomous research workflow ---
+    # --- event bus ---
+    event_bus = RuntimeEventBus()
+
+    # --- specialized agents ---
+    _inf = inference_router if inference_router.enabled else None
+    hypothesis_agents = [HypothesisAgent(inference_router=_inf, event_bus=event_bus)]
+    critique_agents = [CritiqueAgent(inference_router=_inf, event_bus=event_bus)]
+    synthesis_agent = SynthesisAgent(inference_router=_inf, event_bus=event_bus)
+
+    # --- agent coordinator ---
+    coordinator = AgentCoordinator(
+        event_bus=event_bus,
+        hypothesis_agents=hypothesis_agents,
+        critique_agents=critique_agents,
+        synthesis_agent=synthesis_agent,
+        inference_router=_inf,
+        config=CoordinatorConfig(),
+    )
+
+    # --- cognitive pipeline (backward compat) ---
     agent = ResearchAgent(
-        inference_router=inference_router if inference_router.enabled else None,
+        inference_router=_inf,
         context_engine=context_engine,
     )
     pipeline = CognitivePipeline(agents=[agent], policy_enforcer=policy_enforcer)
@@ -147,7 +171,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         pipeline=pipeline,
         debate_runtime=debate_runtime,
         recursive_loop=recursive_loop,
-        inference_router=inference_router if inference_router.enabled else None,
+        inference_router=_inf,
         knowledge_graph=knowledge_graph,
         config=WorkflowConfig(),
     )
@@ -165,6 +189,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.research_workflow = research_workflow
     app.state.scheduler = scheduler
     app.state.audit_log = audit_log
+    app.state.event_bus = event_bus
+    app.state.coordinator = coordinator
     app.state.service_errors = errors
     app.state.settings = settings
 

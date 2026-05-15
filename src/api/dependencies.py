@@ -2,6 +2,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.governance.audit_log import GovernanceAuditLog
+from src.infrastructure.event_bus import RuntimeEventBus
+from src.orchestration.agent_coordinator import AgentCoordinator
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
 from src.orchestration.research_workflow import ResearchWorkflow
@@ -51,3 +53,14 @@ def get_scheduler(request: Request) -> AsyncScheduler:
 
 def get_audit_log(request: Request) -> GovernanceAuditLog:
     return request.app.state.audit_log
+
+
+def get_event_bus(request: Request) -> RuntimeEventBus:
+    return request.app.state.event_bus
+
+
+def get_coordinator(request: Request) -> AgentCoordinator:
+    coordinator = getattr(request.app.state, "coordinator", None)
+    if coordinator is None:
+        raise HTTPException(status_code=503, detail="Agent coordinator unavailable")
+    return coordinator

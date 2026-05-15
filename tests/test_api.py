@@ -7,8 +7,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from src.agents.critique_agent import CritiqueAgent
+from src.agents.hypothesis_agent import HypothesisAgent
 from src.agents.research_agent import ResearchAgent
+from src.agents.synthesis_agent import SynthesisAgent
 from src.api.health import router as health_router
+from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
 from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
@@ -16,7 +20,9 @@ from src.api.routes.runtime import router as runtime_router
 from src.api.routes.workflows import router as workflows_router
 from src.governance.audit_log import GovernanceAuditLog
 from src.governance.policy_enforcer import PolicyEnforcer
+from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.schema import Base
+from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
 from src.orchestration.research_workflow import ResearchWorkflow, WorkflowConfig
@@ -38,6 +44,7 @@ def test_app():
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
         audit_log = GovernanceAuditLog()
+        event_bus = RuntimeEventBus()
         pipeline = CognitivePipeline(
             agents=[ResearchAgent()],
             policy_enforcer=PolicyEnforcer(audit_log=audit_log),
@@ -55,6 +62,13 @@ def test_app():
                 run_recursive_reasoning=False,
             ),
         )
+        coordinator = AgentCoordinator(
+            event_bus=event_bus,
+            hypothesis_agents=[HypothesisAgent(event_bus=event_bus)],
+            critique_agents=[CritiqueAgent(event_bus=event_bus)],
+            synthesis_agent=SynthesisAgent(event_bus=event_bus),
+            config=CoordinatorConfig(max_sub_questions=1, run_critique=False),
+        )
 
         app.state.pipeline = pipeline
         app.state.state_manager = state_manager
@@ -65,6 +79,8 @@ def test_app():
         app.state.research_workflow = research_workflow
         app.state.scheduler = AsyncScheduler()
         app.state.audit_log = audit_log
+        app.state.event_bus = event_bus
+        app.state.coordinator = coordinator
         app.state.service_errors = {}
         yield
 
@@ -77,6 +93,7 @@ def test_app():
     application.include_router(runtime_router)
     application.include_router(reasoning_router)
     application.include_router(governance_router)
+    application.include_router(cognition_router)
     return application
 
 
@@ -229,3 +246,26 @@ def test_governance_audit_endpoint(test_app):
     data = response.json()
     assert "entries" in data
     assert "count" in data
+
+
+def test_coordinate_endpoint_returns_result(test_app):
+    with TestClient(test_app) as client:
+        response = client.post(
+            "/cognition/coordinate",
+            json={"goal": "What causes cognitive decline?", "run_critique": False},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "session_id" in data
+    assert "hypotheses" in data
+    assert "synthesis" in data
+    assert data["goal"] == "What causes cognitive decline?"
+
+
+def test_event_stats_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/cognition/events/stats")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_events_published" in data
+    assert "total_subscribers" in data

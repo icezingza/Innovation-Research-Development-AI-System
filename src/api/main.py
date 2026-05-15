@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from src.api.health import router as health_router
 from src.api.lifespan import lifespan
+from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
 from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
@@ -12,7 +13,7 @@ from src.api.routes.workflows import router as workflows_router
 def create_app(lifespan_override=None) -> FastAPI:
     return FastAPI(
         title="Cognitive Research Runtime",
-        version="0.5.0",
+        version="0.6.0",
         lifespan=lifespan_override or lifespan,
     )
 
@@ -24,3 +25,4 @@ app.include_router(workflows_router)
 app.include_router(runtime_router)
 app.include_router(reasoning_router)
 app.include_router(governance_router)
+app.include_router(cognition_router)
