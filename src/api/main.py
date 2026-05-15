@@ -19,6 +19,7 @@ from src.api.routes.workflows import router as workflows_router
 
 def create_app(lifespan_override=None) -> FastAPI:
     from src.api.middleware import SecurityMiddleware
+    from src.tenants.middleware import TenantMiddleware
 
     app = FastAPI(
         title="Cognitive Research Runtime",
@@ -27,6 +28,7 @@ def create_app(lifespan_override=None) -> FastAPI:
     )
 
     app.add_middleware(SecurityMiddleware)
+    app.add_middleware(TenantMiddleware)
 
     app.include_router(health_router)
     app.include_router(research_router)
