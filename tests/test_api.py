@@ -1,0 +1,103 @@
+"""API integration tests using an in-memory SQLite DB and no external services."""
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from src.agents.research_agent import ResearchAgent
+from src.api.health import router as health_router
+from src.api.routes.research import router as research_router
+from src.api.routes.runtime import router as runtime_router
+from src.governance.policy_enforcer import PolicyEnforcer
+from src.memory.schema import Base
+from src.orchestration.cognitive_pipeline import CognitivePipeline
+from src.runtime.state_manager import RuntimeStateManager
+
+
+@pytest.fixture
+def test_app():
+    """FastAPI app wired with in-memory SQLite — no external services needed."""
+
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        pipeline = CognitivePipeline(
+            agents=[ResearchAgent()],
+            policy_enforcer=PolicyEnforcer(),
+        )
+        state_manager = RuntimeStateManager()
+
+        app.state.pipeline = pipeline
+        app.state.state_manager = state_manager
+        app.state.db_session = session_factory
+        app.state.service_errors = {}
+        yield
+
+        await engine.dispose()
+
+    application = FastAPI(lifespan=_lifespan)
+    application.include_router(health_router)
+    application.include_router(research_router)
+    application.include_router(runtime_router)
+    return application
+
+
+def test_health_returns_healthy(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["runtime"] == "healthy"
+    assert response.json()["unavailable_services"] == []
+
+
+def test_runtime_state_returns_empty_on_start(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/runtime/state")
+    assert response.status_code == 200
+    data = response.json()
+    assert "active_agents" in data
+    assert "cycles" in data
+
+
+def test_create_research_task_returns_202(test_app):
+    with TestClient(test_app) as client:
+        response = client.post(
+            "/research/tasks",
+            json={"question": "Does exercise improve cognitive function?"},
+        )
+    assert response.status_code == 202
+    body = response.json()
+    assert body["status"] == "pending"
+    assert "task_id" in body
+
+
+def test_get_research_task_not_found(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/research/tasks/nonexistent-id")
+    assert response.status_code == 404
+
+
+def test_create_and_retrieve_research_task(test_app):
+    with TestClient(test_app) as client:
+        create_resp = client.post(
+            "/research/tasks",
+            json={
+                "question": "What is the role of sleep in memory consolidation?",
+                "constraints": ["use peer-reviewed sources"],
+            },
+        )
+        assert create_resp.status_code == 202
+        task_id = create_resp.json()["task_id"]
+
+        get_resp = client.get(f"/research/tasks/{task_id}")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert data["task_id"] == task_id
+    assert data["question"] == "What is the role of sleep in memory consolidation?"

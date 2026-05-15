@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import Any
+
+from fastapi import APIRouter, Request
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.responses import Response
 
@@ -6,8 +8,10 @@ router = APIRouter(tags=["observability"])
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    return {"runtime": "healthy"}
+async def health(request: Request) -> dict[str, Any]:
+    errors: dict[str, str] = getattr(request.app.state, "service_errors", {})
+    status = "degraded" if errors else "healthy"
+    return {"runtime": status, "unavailable_services": list(errors.keys())}
 
 
 @router.get("/metrics")
