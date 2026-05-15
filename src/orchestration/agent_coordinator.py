@@ -64,6 +64,7 @@ class AgentCoordinator:
         critique_agents: list[CritiqueAgent],
         synthesis_agent: SynthesisAgent,
         inference_router: Any | None = None,
+        research_memory: Any | None = None,
         config: CoordinatorConfig | None = None,
     ) -> None:
         self._bus = event_bus
@@ -71,6 +72,7 @@ class AgentCoordinator:
         self._critique_agents = critique_agents
         self._synthesis = synthesis_agent
         self._inference = inference_router
+        self._memory = research_memory
         self._config = config or CoordinatorConfig()
 
     async def coordinate(self, goal: str) -> CoordinatedResult:
@@ -93,6 +95,15 @@ class AgentCoordinator:
             )
         )
 
+        # --- Prior knowledge recall ---
+        prior_evidence: list[str] = []
+        if self._memory is not None:
+            try:
+                prior = await self._memory.recall(goal, limit=3)
+                prior_evidence = [e.statement for e in prior if e.statement]
+            except Exception as exc:
+                logger.warning("coordinator_prior_recall_failed", extra={"error": str(exc)})
+
         sub_questions = await self._plan(goal, cfg.max_sub_questions)
 
         # --- Phase 1: Parallel hypothesis generation ---
@@ -100,7 +111,11 @@ class AgentCoordinator:
         for i, question in enumerate(sub_questions):
             agent = self._hypothesis_agents[i % len(self._hypothesis_agents)]
             hypothesis_tasks.append(
-                agent.run({"question": question, "generation": 0})
+                agent.run({
+                    "question": question,
+                    "generation": 0,
+                    "prior_evidence": prior_evidence,
+                })
             )
 
         h_messages = await asyncio.gather(*hypothesis_tasks, return_exceptions=True)

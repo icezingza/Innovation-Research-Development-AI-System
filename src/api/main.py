@@ -8,23 +8,32 @@ from src.api.routes.intelligence import router as intelligence_router
 from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
 from src.api.routes.runtime import router as runtime_router
+from src.api.routes.streams import router as streams_router
 from src.api.routes.workflows import router as workflows_router
 
 
 def create_app(lifespan_override=None) -> FastAPI:
-    return FastAPI(
+    from src.api.middleware import SecurityMiddleware
+
+    app = FastAPI(
         title="Cognitive Research Runtime",
-        version="0.7.0",
+        version="0.8.0",
         lifespan=lifespan_override or lifespan,
     )
 
+    app.add_middleware(SecurityMiddleware)
+
+    app.include_router(health_router)
+    app.include_router(research_router)
+    app.include_router(workflows_router)
+    app.include_router(runtime_router)
+    app.include_router(reasoning_router)
+    app.include_router(governance_router)
+    app.include_router(cognition_router)
+    app.include_router(intelligence_router)
+    app.include_router(streams_router)
+
+    return app
+
 
 app = create_app()
-app.include_router(health_router)
-app.include_router(research_router)
-app.include_router(workflows_router)
-app.include_router(runtime_router)
-app.include_router(reasoning_router)
-app.include_router(governance_router)
-app.include_router(cognition_router)
-app.include_router(intelligence_router)

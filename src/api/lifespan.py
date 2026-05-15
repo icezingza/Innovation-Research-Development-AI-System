@@ -18,19 +18,24 @@ from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.context_engine import RESEARCH_COLLECTION, ContextEngine
 from src.memory.knowledge_graph import KnowledgeGraph
 from src.memory.memory_manager import MemoryManager
-from src.memory.research_memory import ResearchMemory
 from src.memory.neo4j_connector import Neo4jKnowledgeConnector
 from src.memory.postgres_memory_store import PostgresMemoryStore
 from src.memory.qdrant_connector import QdrantMemoryConnector
 from src.memory.redis_runtime_store import RedisRuntimeStore
+from src.memory.research_memory import ResearchMemory
 from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
 from src.orchestration.research_workflow import ResearchWorkflow, WorkflowConfig
+from src.reasoning.quality_tracker import QualityTracker
 from src.reasoning.reasoning_trace import ReasoningTrace
 from src.reasoning.recursive_loop import RecursiveReasoningLoop
 from src.runtime.scheduler import AsyncScheduler
 from src.runtime.state_manager import RuntimeStateManager
+from src.runtime.stream_manager import StreamManager
+from src.runtime.worker_pool import AsyncWorkerPool
+from src.security.api_keys import APIKeyManager
+from src.security.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +105,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 name=RESEARCH_COLLECTION,
                 vector_size=embedding_provider.dimensions,
             )
-            logger.info(
-                "qdrant_collection_ready",
-                extra={"collection": RESEARCH_COLLECTION},
-            )
+            logger.info("qdrant_collection_ready", extra={"collection": RESEARCH_COLLECTION})
         except Exception as exc:
             logger.warning("qdrant_collection_init_failed", extra={"error": str(exc)})
 
@@ -121,19 +123,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
+    # --- security ---
+    key_manager = APIKeyManager(raw_keys=settings.api_keys)
+    rate_limiter = RateLimiter(
+        requests_per_minute=settings.rate_limit_requests_per_minute,
+        enabled=settings.rate_limit_enabled,
+    )
+
     # --- governance ---
     audit_log = GovernanceAuditLog(redis_store=redis_store if redis_ok else None)
     policy_enforcer = PolicyEnforcer(audit_log=audit_log)
 
-    # --- reasoning trace (three-tier: memory + Redis + PostgreSQL) ---
+    # --- reasoning ---
     reasoning_trace = ReasoningTrace(
         store=redis_store if redis_ok else None,
         session_factory=session_factory,
     )
+    quality_tracker = QualityTracker(reasoning_trace=reasoning_trace)
 
     # --- runtime ---
     state_manager = RuntimeStateManager(store=redis_store if redis_ok else None)
     scheduler = AsyncScheduler()
+    worker_pool = AsyncWorkerPool(scheduler=scheduler, max_workers=4)
+    stream_manager = StreamManager()
 
     # --- reasoning components ---
     recursive_loop = RecursiveReasoningLoop(trace=reasoning_trace)
@@ -147,15 +159,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # --- event bus ---
     event_bus = RuntimeEventBus()
 
-    # --- research memory (cross-session knowledge store) ---
+    # --- research memory ---
     research_memory = ResearchMemory(
         context_engine=context_engine,
         session_factory=session_factory,
     )
-
-    # --- memory agent: reactive subscriber, persists findings to research_memory ---
-    memory_agent = MemoryAgent(research_memory=research_memory)
-    memory_agent.register(event_bus)
+    MemoryAgent(research_memory=research_memory).register(event_bus)
 
     # --- specialized agents ---
     _inf = inference_router if inference_router.enabled else None
@@ -163,21 +172,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     critique_agents = [CritiqueAgent(inference_router=_inf, event_bus=event_bus)]
     synthesis_agent = SynthesisAgent(inference_router=_inf, event_bus=event_bus)
 
-    # --- agent coordinator ---
     coordinator = AgentCoordinator(
         event_bus=event_bus,
         hypothesis_agents=hypothesis_agents,
         critique_agents=critique_agents,
         synthesis_agent=synthesis_agent,
         inference_router=_inf,
+        research_memory=research_memory,
         config=CoordinatorConfig(),
     )
 
-    # --- cognitive pipeline (backward compat) ---
-    agent = ResearchAgent(
-        inference_router=_inf,
-        context_engine=context_engine,
-    )
+    # --- cognitive pipeline ---
+    agent = ResearchAgent(inference_router=_inf, context_engine=context_engine)
     pipeline = CognitivePipeline(agents=[agent], policy_enforcer=policy_enforcer)
     research_workflow = ResearchWorkflow(
         pipeline=pipeline,
@@ -185,8 +191,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         recursive_loop=recursive_loop,
         inference_router=_inf,
         knowledge_graph=knowledge_graph,
+        research_memory=research_memory,
+        stream_manager=stream_manager,
         config=WorkflowConfig(),
     )
+
+    # --- start worker pool ---
+    await worker_pool.start()
 
     # --- wire app state ---
     app.state.memory = memory
@@ -200,10 +211,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.debate_runtime = debate_runtime
     app.state.research_workflow = research_workflow
     app.state.scheduler = scheduler
+    app.state.worker_pool = worker_pool
+    app.state.stream_manager = stream_manager
     app.state.audit_log = audit_log
     app.state.event_bus = event_bus
     app.state.coordinator = coordinator
     app.state.research_memory = research_memory
+    app.state.quality_tracker = quality_tracker
+    app.state.key_manager = key_manager
+    app.state.rate_limiter = rate_limiter
     app.state.service_errors = errors
     app.state.settings = settings
 
@@ -215,6 +231,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     # --- shutdown ---
+    await worker_pool.stop()
     scheduler.stop()
     await redis_store.close()
     await neo4j.close()

@@ -53,6 +53,8 @@ class ResearchWorkflow:
         recursive_loop: Any,
         inference_router: Any | None = None,
         knowledge_graph: Any | None = None,
+        research_memory: Any | None = None,
+        stream_manager: Any | None = None,
         config: WorkflowConfig | None = None,
     ) -> None:
         self._pipeline = pipeline
@@ -60,26 +62,53 @@ class ResearchWorkflow:
         self._recursive = recursive_loop
         self._inference = inference_router
         self._graph = knowledge_graph
+        self._memory = research_memory
+        self._stream = stream_manager
         self._config = config or WorkflowConfig()
 
-    async def run(self, goal: str) -> WorkflowResult:
+    async def run(self, goal: str, workflow_id: str | None = None) -> WorkflowResult:
         with tracer.start_as_current_span("orchestration.research_workflow"):
             start = time.monotonic()
-            result = await self._execute(goal)
+            result = await self._execute(goal, workflow_id=workflow_id)
             elapsed = time.monotonic() - start
             runtime_events.labels(event_type="workflow_complete").inc()
             return result.model_copy(update={"duration_seconds": round(elapsed, 4)})
 
-    async def _execute(self, goal: str) -> WorkflowResult:
-        workflow_id = str(uuid.uuid4())
+    async def _execute(self, goal: str, workflow_id: str | None = None) -> WorkflowResult:
+        workflow_id = workflow_id or str(uuid.uuid4())
         cfg = self._config
 
+        if self._stream:
+            await self._stream.publish(
+                workflow_id, {"type": "started", "goal": goal, "workflow_id": workflow_id}
+            )
+
+        # --- Prior knowledge recall ---
+        prior_context: list[str] = []
+        if self._memory is not None:
+            try:
+                prior = await self._memory.recall(goal, limit=3)
+                prior_context = [e.statement for e in prior if e.statement]
+                if prior_context and self._stream:
+                    await self._stream.publish(
+                        workflow_id,
+                        {"type": "prior_context", "count": len(prior_context)},
+                    )
+            except Exception as exc:
+                logger.warning("prior_recall_failed", extra={"error": str(exc)})
+
         # --- Plan ---
-        sub_questions = await self._plan(goal, cfg.max_sub_questions)
+        sub_questions = await self._plan(goal, cfg.max_sub_questions, prior_context)
+
+        if self._stream:
+            await self._stream.publish(
+                workflow_id, {"type": "planning_done", "sub_questions": sub_questions}
+            )
 
         # --- Parallel research on each sub-question ---
         research_tasks = [
-            self._pipeline.run({"question": q}) for q in sub_questions
+            self._pipeline.run({"question": q, "prior_hypotheses": prior_context})
+            for q in sub_questions
         ]
         agent_messages = await asyncio.gather(*research_tasks, return_exceptions=True)
 
@@ -162,6 +191,32 @@ class ResearchWorkflow:
 
         synthesis = await self._synthesize(goal, sub_results, primary_hypothesis)
 
+        # --- Store synthesis to cross-session memory ---
+        if self._memory is not None:
+            try:
+                from src.memory.research_memory import MemoryEntry
+
+                await self._memory.store(
+                    MemoryEntry(
+                        topic=goal,
+                        statement=synthesis.get("conclusion", ""),
+                        confidence=synthesis.get("primary_confidence", 0.0),
+                        source="workflow",
+                        session_id=workflow_id,
+                        evidence=list(set(
+                            e for r in sub_results for e in r.hypothesis.get("evidence", [])
+                        )),
+                    )
+                )
+            except Exception as exc:
+                logger.warning("memory_store_failed", extra={"error": str(exc)})
+
+        if self._stream:
+            await self._stream.publish(
+                workflow_id, {"type": "synthesis_done", "conclusion": synthesis.get("conclusion", "")}
+            )
+            await self._stream.close(workflow_id)
+
         return WorkflowResult(
             workflow_id=workflow_id,
             goal=goal,
@@ -174,12 +229,19 @@ class ResearchWorkflow:
             duration_seconds=0.0,
         )
 
-    async def _plan(self, goal: str, max_questions: int) -> list[str]:
+    async def _plan(
+        self, goal: str, max_questions: int, prior_context: list[str] | None = None
+    ) -> list[str]:
         if self._inference is not None and self._inference.enabled:
+            prior_str = ""
+            if prior_context:
+                prior_str = "\n\nPrior research context:\n" + "\n".join(
+                    f"- {s}" for s in prior_context[:3]
+                )
             prompt = (
                 f"Break this research goal into exactly {max_questions} specific, "
                 f"testable sub-questions. Return only the questions, one per line, "
-                f"no numbering or extra text.\nGoal: {goal}"
+                f"no numbering or extra text.\nGoal: {goal}{prior_str}"
             )
             output = await self._inference.complete(
                 prompt=prompt,

@@ -5,6 +5,8 @@ from src.governance.audit_log import GovernanceAuditLog
 from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.research_memory import ResearchMemory
 from src.orchestration.agent_coordinator import AgentCoordinator
+from src.reasoning.quality_tracker import QualityTracker
+from src.runtime.stream_manager import StreamManager
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
 from src.orchestration.research_workflow import ResearchWorkflow
@@ -69,3 +71,11 @@ def get_coordinator(request: Request) -> AgentCoordinator:
 
 def get_research_memory(request: Request) -> ResearchMemory:
     return request.app.state.research_memory
+
+
+def get_quality_tracker(request: Request) -> QualityTracker:
+    return request.app.state.quality_tracker
+
+
+def get_stream_manager(request: Request) -> StreamManager:
+    return request.app.state.stream_manager

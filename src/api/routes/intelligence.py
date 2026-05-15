@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from src.api.dependencies import get_research_memory
+from src.api.dependencies import get_quality_tracker, get_research_memory
 from src.memory.research_memory import ResearchMemory
+from src.reasoning.quality_tracker import QualityTracker
 
 router = APIRouter(prefix="/intelligence", tags=["intelligence"])
 
@@ -63,3 +64,13 @@ async def list_hypotheses(
         "entries": [e.model_dump() for e in entries],
         "count": len(entries),
     }
+
+
+@router.get("/quality-trends")
+async def quality_trends(
+    limit: int = 200,
+    tracker: QualityTracker = Depends(get_quality_tracker),
+) -> dict:
+    """Analyze reasoning quality trends and return tuning recommendations."""
+    report = await tracker.analyze(limit=limit)
+    return report.model_dump()

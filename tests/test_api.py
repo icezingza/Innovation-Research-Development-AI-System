@@ -19,12 +19,15 @@ from src.api.routes.intelligence import router as intelligence_router
 from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
 from src.api.routes.runtime import router as runtime_router
+from src.api.routes.streams import router as streams_router
 from src.api.routes.workflows import router as workflows_router
 from src.governance.audit_log import GovernanceAuditLog
 from src.governance.policy_enforcer import PolicyEnforcer
 from src.infrastructure.event_bus import RuntimeEventBus
 from src.memory.research_memory import ResearchMemory
 from src.memory.schema import Base
+from src.reasoning.quality_tracker import QualityTracker
+from src.runtime.stream_manager import StreamManager
 from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
@@ -87,6 +90,10 @@ def test_app():
         app.state.event_bus = event_bus
         app.state.coordinator = coordinator
         app.state.research_memory = research_memory
+        app.state.quality_tracker = QualityTracker(ReasoningTrace())
+        app.state.stream_manager = StreamManager()
+        app.state.key_manager = None
+        app.state.rate_limiter = None
         app.state.service_errors = {}
         yield
 
@@ -101,6 +108,7 @@ def test_app():
     application.include_router(governance_router)
     application.include_router(cognition_router)
     application.include_router(intelligence_router)
+    application.include_router(streams_router)
     return application
 
 
@@ -305,3 +313,20 @@ def test_intelligence_hypotheses_endpoint(test_app):
     data = response.json()
     assert "entries" in data
     assert "count" in data
+
+
+def test_intelligence_quality_trends_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/intelligence/quality-trends")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_entries_analyzed" in data
+    assert "recommendation" in data
+
+
+def test_active_streams_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/streams/active")
+    assert response.status_code == 200
+    data = response.json()
+    assert "active_streams" in data
