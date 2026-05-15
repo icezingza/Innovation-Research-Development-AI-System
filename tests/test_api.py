@@ -9,11 +9,15 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.agents.research_agent import ResearchAgent
 from src.api.health import router as health_router
+from src.api.routes.reasoning import router as reasoning_router
 from src.api.routes.research import router as research_router
 from src.api.routes.runtime import router as runtime_router
 from src.governance.policy_enforcer import PolicyEnforcer
 from src.memory.schema import Base
 from src.orchestration.cognitive_pipeline import CognitivePipeline
+from src.orchestration.debate_runtime import DebateRuntime
+from src.reasoning.reasoning_trace import ReasoningTrace
+from src.reasoning.recursive_loop import RecursiveReasoningLoop
 from src.runtime.state_manager import RuntimeStateManager
 
 
@@ -37,6 +41,9 @@ def test_app():
         app.state.pipeline = pipeline
         app.state.state_manager = state_manager
         app.state.db_session = session_factory
+        app.state.reasoning_trace = ReasoningTrace()
+        app.state.recursive_loop = RecursiveReasoningLoop()
+        app.state.debate_runtime = DebateRuntime()
         app.state.service_errors = {}
         yield
 
@@ -46,6 +53,7 @@ def test_app():
     application.include_router(health_router)
     application.include_router(research_router)
     application.include_router(runtime_router)
+    application.include_router(reasoning_router)
     return application
 
 
@@ -101,3 +109,45 @@ def test_create_and_retrieve_research_task(test_app):
     data = get_resp.json()
     assert data["task_id"] == task_id
     assert data["question"] == "What is the role of sleep in memory consolidation?"
+
+
+def test_recursive_reasoning_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.post(
+            "/reasoning/recursive",
+            json={
+                "hypothesis_statement": "Sleep consolidates episodic memory",
+                "question": "How does sleep affect memory?",
+                "max_depth": 2,
+            },
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "final_hypothesis" in data
+    assert data["depth_reached"] >= 1
+    assert "convergence_reason" in data
+
+
+def test_debate_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.post(
+            "/reasoning/debates",
+            json={
+                "hypothesis": "Exercise improves cognitive function",
+                "max_rounds": 1,
+            },
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "winner" in data
+    assert data["winner"] in ("proponent", "opponent", "draw")
+    assert data["total_rounds"] >= 1
+
+
+def test_reasoning_traces_endpoint(test_app):
+    with TestClient(test_app) as client:
+        response = client.get("/reasoning/traces")
+    assert response.status_code == 200
+    data = response.json()
+    assert "traces" in data
+    assert "count" in data

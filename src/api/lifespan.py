@@ -16,6 +16,9 @@ from src.memory.postgres_memory_store import PostgresMemoryStore
 from src.memory.qdrant_connector import QdrantMemoryConnector
 from src.memory.redis_runtime_store import RedisRuntimeStore
 from src.orchestration.cognitive_pipeline import CognitivePipeline
+from src.orchestration.debate_runtime import DebateRuntime
+from src.reasoning.reasoning_trace import ReasoningTrace
+from src.reasoning.recursive_loop import RecursiveReasoningLoop
 from src.runtime.state_manager import RuntimeStateManager
 
 logger = logging.getLogger(__name__)
@@ -107,8 +110,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
+    # --- reasoning trace (three-tier: memory + Redis + PostgreSQL) ---
+    reasoning_trace = ReasoningTrace(
+        store=redis_store if redis_ok else None,
+        session_factory=session_factory,
+    )
+
     # --- runtime ---
     state_manager = RuntimeStateManager(store=redis_store if redis_ok else None)
+
+    # --- reasoning components ---
+    recursive_loop = RecursiveReasoningLoop(trace=reasoning_trace)
+    debate_runtime = DebateRuntime(
+        inference_router=inference_router if inference_router.enabled else None,
+    )
 
     # --- agent pipeline ---
     agent = ResearchAgent(
@@ -124,6 +139,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.db_session = session_factory
     app.state.inference = inference_router
     app.state.embedding = embedding_provider
+    app.state.reasoning_trace = reasoning_trace
+    app.state.recursive_loop = recursive_loop
+    app.state.debate_runtime = debate_runtime
     app.state.service_errors = errors
     app.state.settings = settings
 
