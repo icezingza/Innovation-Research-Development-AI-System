@@ -3,6 +3,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+from src.governance.audit_log import AuditEntry, GovernanceAuditLog
 from src.protocols.agent_message import AgentMessage
 from src.telemetry.runtime_metrics import runtime_events
 
@@ -30,8 +31,26 @@ class PolicyViolationError(Exception):
 class PolicyEnforcer:
     """Runtime governance layer — every agent action passes through here."""
 
-    def __init__(self, max_content_bytes: int = 1_000_000) -> None:
+    def __init__(
+        self,
+        max_content_bytes: int = 1_000_000,
+        audit_log: "GovernanceAuditLog | None" = None,
+    ) -> None:
         self._max_content_bytes = max_content_bytes
+        self._audit_log = audit_log
+
+    async def _audit(self, message: AgentMessage, result: PolicyResult) -> None:
+        if self._audit_log is None:
+            return
+        entry = AuditEntry(
+            decision=result.decision.value,
+            reason=result.reason,
+            message_id=message.id,
+            sender_id=message.sender_id,
+            message_type=message.message_type.value,
+            content_size_bytes=len(str(message.content).encode()),
+        )
+        await self._audit_log.record(entry)
 
     async def evaluate(self, message: AgentMessage) -> PolicyResult:
         content_size = len(str(message.content).encode())
@@ -47,6 +66,7 @@ class PolicyEnforcer:
                 extra={"message_id": message.id, "reason": result.reason},
             )
             runtime_events.labels(event_type="policy_deny").inc()
+            await self._audit(message, result)
             return result
 
         if not message.sender_id:
@@ -56,14 +76,17 @@ class PolicyEnforcer:
                 message_id=message.id,
             )
             runtime_events.labels(event_type="policy_deny").inc()
+            await self._audit(message, result)
             return result
 
         runtime_events.labels(event_type="policy_allow").inc()
-        return PolicyResult(
+        result = PolicyResult(
             decision=PolicyDecision.ALLOW,
             reason="All policy checks passed",
             message_id=message.id,
         )
+        await self._audit(message, result)
+        return result
 
     async def enforce(self, message: AgentMessage) -> None:
         result = await self.evaluate(message)

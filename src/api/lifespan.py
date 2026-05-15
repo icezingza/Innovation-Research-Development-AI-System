@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.agents.research_agent import ResearchAgent
 from src.config import get_settings
+from src.governance.audit_log import GovernanceAuditLog
 from src.governance.policy_enforcer import PolicyEnforcer
 from src.inference.client import create_embedding_provider, create_inference_router
 from src.memory.context_engine import RESEARCH_COLLECTION, ContextEngine
+from src.memory.knowledge_graph import KnowledgeGraph
 from src.memory.memory_manager import MemoryManager
 from src.memory.neo4j_connector import Neo4jKnowledgeConnector
 from src.memory.postgres_memory_store import PostgresMemoryStore
@@ -17,8 +19,10 @@ from src.memory.qdrant_connector import QdrantMemoryConnector
 from src.memory.redis_runtime_store import RedisRuntimeStore
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
+from src.orchestration.research_workflow import ResearchWorkflow, WorkflowConfig
 from src.reasoning.reasoning_trace import ReasoningTrace
 from src.reasoning.recursive_loop import RecursiveReasoningLoop
+from src.runtime.scheduler import AsyncScheduler
 from src.runtime.state_manager import RuntimeStateManager
 
 logger = logging.getLogger(__name__)
@@ -63,7 +67,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         user=settings.neo4j_user,
         password=settings.neo4j_password,
     )
-    await _probe("neo4j", neo4j.healthcheck(), errors)
+    neo4j_ok = await _probe("neo4j", neo4j.healthcheck(), errors)
 
     memory = MemoryManager(
         vector_store=qdrant,
@@ -110,6 +114,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
+    # --- governance ---
+    audit_log = GovernanceAuditLog(redis_store=redis_store if redis_ok else None)
+    policy_enforcer = PolicyEnforcer(audit_log=audit_log)
+
     # --- reasoning trace (three-tier: memory + Redis + PostgreSQL) ---
     reasoning_trace = ReasoningTrace(
         store=redis_store if redis_ok else None,
@@ -118,6 +126,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # --- runtime ---
     state_manager = RuntimeStateManager(store=redis_store if redis_ok else None)
+    scheduler = AsyncScheduler()
 
     # --- reasoning components ---
     recursive_loop = RecursiveReasoningLoop(trace=reasoning_trace)
@@ -125,12 +134,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         inference_router=inference_router if inference_router.enabled else None,
     )
 
-    # --- agent pipeline ---
+    # --- knowledge graph ---
+    knowledge_graph = KnowledgeGraph(connector=neo4j) if neo4j_ok else None
+
+    # --- autonomous research workflow ---
     agent = ResearchAgent(
         inference_router=inference_router if inference_router.enabled else None,
         context_engine=context_engine,
     )
-    pipeline = CognitivePipeline(agents=[agent], policy_enforcer=PolicyEnforcer())
+    pipeline = CognitivePipeline(agents=[agent], policy_enforcer=policy_enforcer)
+    research_workflow = ResearchWorkflow(
+        pipeline=pipeline,
+        debate_runtime=debate_runtime,
+        recursive_loop=recursive_loop,
+        inference_router=inference_router if inference_router.enabled else None,
+        knowledge_graph=knowledge_graph,
+        config=WorkflowConfig(),
+    )
 
     # --- wire app state ---
     app.state.memory = memory
@@ -142,6 +162,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.reasoning_trace = reasoning_trace
     app.state.recursive_loop = recursive_loop
     app.state.debate_runtime = debate_runtime
+    app.state.research_workflow = research_workflow
+    app.state.scheduler = scheduler
+    app.state.audit_log = audit_log
     app.state.service_errors = errors
     app.state.settings = settings
 
@@ -153,6 +176,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     # --- shutdown ---
+    scheduler.stop()
     await redis_store.close()
     await neo4j.close()
     await postgres_store.dispose()
