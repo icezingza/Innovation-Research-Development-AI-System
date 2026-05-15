@@ -1,0 +1,63 @@
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+from src.api.health import router as health_router
+from src.api.lifespan import lifespan
+from src.api.routes.agenda import router as agenda_router
+from src.api.routes.cognition import router as cognition_router
+from src.api.routes.governance import router as governance_router
+from src.api.routes.intelligence import router as intelligence_router
+from src.api.routes.reasoning import router as reasoning_router
+from src.api.routes.research import router as research_router
+from src.api.routes.runtime import router as runtime_router
+from src.api.routes.sessions import router as sessions_router
+from src.api.routes.streams import router as streams_router
+from src.api.routes.workflows import router as workflows_router
+
+
+def create_app(lifespan_override=None) -> FastAPI:
+    from src.api.middleware import SecurityMiddleware
+
+    app = FastAPI(
+        title="Cognitive Research Runtime",
+        version="0.9.0",
+        lifespan=lifespan_override or lifespan,
+    )
+
+    app.add_middleware(SecurityMiddleware)
+
+    app.include_router(health_router)
+    app.include_router(research_router)
+    app.include_router(workflows_router)
+    app.include_router(runtime_router)
+    app.include_router(reasoning_router)
+    app.include_router(governance_router)
+    app.include_router(cognition_router)
+    app.include_router(intelligence_router)
+    app.include_router(streams_router)
+    app.include_router(agenda_router)
+    app.include_router(sessions_router)
+
+    # Static files and client-side routing
+    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+    
+    if os.path.exists(frontend_dist):
+        app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+        
+        @app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            if full_path.startswith("api/"):
+                return  # Let FastAPI handle API routes
+            
+            file_path = os.path.join(frontend_dist, full_path)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return FileResponse(file_path)
+            
+            return FileResponse(os.path.join(frontend_dist, "index.html"))
+
+    return app
+
+
+app = create_app()

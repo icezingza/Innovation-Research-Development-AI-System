@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(C:\\\\Users\\\\icezi\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\5.1.0\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh --project-dir \"C:\\\\Users\\\\icezi\\\\Downloads\\\\Github repo\\\\Innovation-Research-Development-AI-System-main\\\\Innovation-Research-Development-AI-System-main\")",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)"
+    ]
+  }
+}

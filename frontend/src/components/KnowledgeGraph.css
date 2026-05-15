@@ -1,0 +1,6 @@
+.knowledge-graph-container {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f9f9f9;
+}
