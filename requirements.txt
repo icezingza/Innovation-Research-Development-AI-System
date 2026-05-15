@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 qdrant-client
 neo4j
-redis[asyncio]
+redis>=4.2.0
 sqlalchemy[asyncio]
 asyncpg
 prometheus-client
