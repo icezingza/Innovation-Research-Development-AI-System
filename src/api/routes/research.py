@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.memory.schema import ReasoningTraceRecord, HypothesisRecord, ResearchTask
 from src.security.auth_utils import RequireRole
-from src.api.dependencies import get_db_session, get_pipeline
+from src.api.dependencies import get_db, get_db_session, get_pipeline
 from src.api.routes.auth import get_current_user
 from src.security.rls import get_rls_db
 from src.orchestration.cognitive_pipeline import CognitivePipeline
@@ -35,13 +35,24 @@ async def create_research_task(
     background_tasks: BackgroundTasks,
     pipeline: CognitivePipeline = Depends(get_pipeline),
     session_factory = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
 ) -> ResearchTaskCreated:
     task_id = str(uuid.uuid4())
+
+    # Populate request.state from JWT so _resolve_tenant_id works
+    request.state.tenant_id = current_user.get("tenant_id")
+    request.state.user_id = current_user.get("sub")
 
     # Resolve tenant_id from request state (set by auth or tenant middleware)
     tenant_id: str = _resolve_tenant_id(request)
 
+    from sqlalchemy import text
     async with session_factory() as session:
+        # Set RLS context so tenant_isolation policy allows the INSERT
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :tid, false)"),
+            {"tid": tenant_id},
+        )
         task = ResearchTask(id=task_id, tenant_id=tenant_id, question=body.question, status="pending")
         session.add(task)
         await session.commit()
@@ -93,15 +104,23 @@ async def get_research_task(
 @router.get("/tasks/{task_id}/trace")
 async def get_task_trace(
     task_id: str,
-    db: AsyncSession = Depends(get_rls_db),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ) -> dict[str, Any]:
     """Retrieve the auditable trace of a research task.
-    
-    Shows the reasoning flow: Hypothesis → Research → Critique → Synthesis
-    Requires admin or auditor role.
+
+    Shows the reasoning flow: Hypothesis -> Research -> Critique -> Synthesis
+    Requires admin, auditor, or owner role.
     """
-    RequireRole(["admin", "auditor"])(current_user)
+    from sqlalchemy import text
+    RequireRole(["admin", "auditor", "owner"])(current_user)
+
+    # Set RLS context so the query returns this tenant's data only
+    tenant_id = current_user.get("tenant_id", "")
+    await db.execute(
+        text("SELECT set_config('app.tenant_id', :tid, false)"),
+        {"tid": tenant_id},
+    )
 
     # Get the task to verify access and context
     task = await db.get(ResearchTask, task_id)

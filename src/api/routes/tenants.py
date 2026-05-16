@@ -201,7 +201,12 @@ async def get_tenant_finops(
     Shows quota usage, estimated cost, and budget depletion forecast.
     Requires admin or finance role.
     """
-    RequireRole(["admin", "finance"])(current_user)
+    RequireRole(["admin", "finance", "owner"])(current_user)
+
+    # Tenant isolation: users can only access their own tenant's finops
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if caller_tenant_id != tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalars().first()
