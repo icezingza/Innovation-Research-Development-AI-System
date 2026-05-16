@@ -1,0 +1,16 @@
+apiVersion: v2
+name: ird-ai
+description: IRD-AI Sovereign Cognitive Platform - Air-Gapped Helm Chart
+type: application
+version: 0.9.0
+appVersion: "0.9.0"
+keywords:
+  - ai
+  - cognitive
+  - research
+  - air-gapped
+  - sovereign
+  - thailand
+maintainers:
+  - name: IRD-AI Team
+    email: dev@ird-ai.com
