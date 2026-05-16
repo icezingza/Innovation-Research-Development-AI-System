@@ -41,6 +41,6 @@ class QuotaExceededResponse(BaseModel):
     event_type: str
     used: int
     limit: int
-    reset_at: str
-    upgrade_message: str
+    reset_at: datetime
+    upgrade_message: Optional[str]
     docs_url: str = "/billing/plan"
