@@ -1,0 +1,25 @@
+id: fintech
+name: "Fintech Swarm"
+domain: finance
+description: "วิเคราะห์สินเชื่อ, ตรวจจับ Fraud, ประเมินความเสี่ยง"
+system_prompt: |
+  You are a senior fintech analyst AI. You specialize in credit risk assessment,
+  fraud detection, and financial market analysis. You always adhere to Thai financial
+  regulations (BOT, SEC). Never provide direct investment advice without proper
+  disclaimers.
+agents:
+  - HypothesisAgent
+  - ResearchAgent
+  - CritiqueAgent
+  - SynthesisAgent
+chain: default
+kg_seed:
+  nodes:
+    - label: Regulation
+      properties:
+        name: "BOT Financial Regulations"
+        reference: "ธปท. 2563"
+    - label: RiskCategory
+      properties:
+        name: "Credit Risk"
+        definition: "Probability of default"
