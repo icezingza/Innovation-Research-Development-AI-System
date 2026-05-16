@@ -70,8 +70,6 @@ async def create_research_task(
     tenant_id: str = _resolve_tenant_id(request)
 
     from sqlalchemy import text
-    from src.swarms.models import TenantSwarm
-    from src.swarms.catalog import get_swarm_catalog
 
     async with session_factory() as session:
         # Set RLS context so tenant_isolation policy allows the INSERT
@@ -79,26 +77,14 @@ async def create_research_task(
             text("SELECT set_config('app.tenant_id', :tid, false)"),
             {"tid": tenant_id},
         )
-        
-        # Check for active swarm
-        result = await session.execute(select(TenantSwarm).filter(
-            TenantSwarm.tenant_id == tenant_id,
-            TenantSwarm.is_active == True
-        ))
-        swarm = result.scalars().first()
 
+        # Swarm template lookup deferred to Phase 4B (requires tenant_swarms table migration)
+        # For now, use default context — swarm activation will be a separate API call
         context: dict[str, Any] = {
             "question": body.question,
             "constraints": body.constraints,
             "prior_hypotheses": body.prior_hypotheses,
         }
-
-        if swarm:
-            tmpl = get_swarm_catalog().get(swarm.template_id)
-            if tmpl:
-                context["system_prompt"] = tmpl.system_prompt
-                context["kg_seed"] = tmpl.knowledge_graph_seed
-                context["domain"] = tmpl.domain
 
         task = ResearchTask(id=task_id, tenant_id=tenant_id, question=body.question, status="pending")
         session.add(task)

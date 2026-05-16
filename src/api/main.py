@@ -18,7 +18,14 @@ from src.api.routes.streams import router as streams_router
 from src.api.routes.workflows import router as workflows_router
 from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.tenants import router as tenants_router
-from src.swarms.routes import router as swarms_router
+# swarms_router: Phase 4 swarm templates (incomplete - missing src.database module)
+# Temporarily disabled until swarms.models migrates to src.memory.schema.Base
+try:
+    from src.swarms.routes import router as swarms_router
+    _SWARMS_AVAILABLE = True
+except ModuleNotFoundError:
+    swarms_router = None
+    _SWARMS_AVAILABLE = False
 
 
 def create_app(lifespan_override=None) -> FastAPI:
@@ -54,7 +61,8 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.include_router(sessions_router)
     app.include_router(dashboard_router)
     app.include_router(tenants_router)
-    app.include_router(swarms_router)
+    if _SWARMS_AVAILABLE:
+        app.include_router(swarms_router)
 
     # Static files and client-side routing
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

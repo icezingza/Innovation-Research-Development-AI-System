@@ -1,0 +1,17 @@
+{
+  "tenant_a": {
+    "id": "b6ea7201-bd70-464f-afb6-ffde18d62484",
+    "tier": "pro",
+    "email": "a1778925733@acme.demo"
+  },
+  "tenant_b": {
+    "id": "3a1817eb-9670-463e-abfa-2a200b74afde",
+    "tier": "free",
+    "email": "b1778925733@beta.demo"
+  },
+  "token_a": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MmYwZWI4My1jNzJjLTQ2ODQtOTJhNi0wNmJjZWYzMDg5YzYiLCJ0ZW5hbnRfaWQiOiJiNmVhNzIwMS1iZDcwLTQ2NGYtYWZiNi1mZmRlMThkNjI0ODQiLCJyb2xlIjoib3duZXIiLCJleHAiOjE3Nzg5MjY2MzR9.dN7nEIEg57Mwyfl08AeMnkwGQg70WZJ0cXnAeZsajsI",
+  "token_b": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NjAwZTQ3My1hMGQzLTQxZjMtOTlkNi1mNjFiZmQ5Mzc1MDAiLCJ0ZW5hbnRfaWQiOiIzYTE4MTdlYi05NjcwLTQ2M2UtYWJmYS0yYTIwMGI3NGFmZGUiLCJyb2xlIjoib3duZXIiLCJleHAiOjE3Nzg5MjY2MzR9.rIClPmzrqymcK69r3itZyMjcR_HHvQ5BrGJb3VHTIhQ",
+  "task_id": "9baba5ac-47b0-4a39-b59a-4bd476cc5c08",
+  "base_url": "http://127.0.0.1:8012",
+  "password": "Pass1234!"
+}

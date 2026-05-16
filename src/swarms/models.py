@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
-from src.database import Base
+from src.memory.schema import Base
 import uuid
 
 class TenantSwarm(Base):
@@ -16,4 +16,5 @@ class TenantSwarm(Base):
     activated_at = Column(DateTime, default=datetime.now(UTC))
     deactivated_at = Column(DateTime, nullable=True)
 
-    tenant = relationship("Tenant", back_populates="swarms")
+    # tenant back-ref removed; Tenant model has no `swarms` collection
+    # (Phase 4 feature; can be re-enabled when Tenant.swarms is added)

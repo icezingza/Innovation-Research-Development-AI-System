@@ -16,6 +16,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies import get_db
+from src.api.routes.auth import get_current_user
 from src.memory.schema import ResearchTask, Tenant, User
 from src.security.auth_utils import get_password_hash, RequireRole
 from src.tenants.quota import TIER_LIMITS, DEFAULT_LIMIT
