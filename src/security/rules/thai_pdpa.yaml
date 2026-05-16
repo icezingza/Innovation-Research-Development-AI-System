@@ -1,0 +1,56 @@
+# PDPA (Personal Data Protection Act) Rules
+# ห้ามเปิดเผย/ประมวลผลข้อมูลส่วนบุคคลโดยไม่ได้รับความยินยอม
+# อ้างอิง: พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ.2562
+
+domain: pdpa
+enabled: true
+version: "1.0"
+
+rules:
+  - id: PDPA-001
+    severity: CRITICAL
+    message: "ห้ามถามหรือเก็บข้อมูลบัตรประชาชนโดยไม่จำเป็น"
+    domains: [all, finance, health]
+    patterns:
+      - '\d{1,2}-?\d{4}-?\d{5}-?\d{2}-?\d{1}'
+      - '\d{13}'
+    keywords:
+      - "เลขบัตรประชาชน"
+      - "เลขประจำตัวประชาชน"
+      - "id card"
+      - "identification number"
+    enabled: true
+
+  - id: PDPA-002
+    severity: HIGH
+    message: "ห้ามเปิดเผยข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, ที่อยู่, เบอร์โทร) โดยไม่ได้รับความยินยอม"
+    domains: [all, finance, health]
+    forbidden_phrases:
+      - "ที่อยู่ของลูกค้า"
+      - "เบอร์โทรลูกค้า"
+      - "email ส่วนตัวของ"
+    keywords:
+      - "personal information"
+      - "ข้อมูลส่วนบุคคล"
+    enabled: true
+
+  - id: PDPA-003
+    severity: MEDIUM
+    message: "ระมัดระวังการเก็บข้อมูลสุขภาพ (Sensitive Data)"
+    domains: [health]
+    keywords:
+      - "โรคประจำตัว"
+      - "ผลเลือด"
+      - "ประวัติการรักษา"
+      - "medical record"
+    enabled: true
+
+  - id: PDPA-004
+    severity: HIGH
+    message: "ห้ามส่งออกข้อมูลส่วนบุคคลไปต่างประเทศโดยไม่ปฏิบัติตามมาตรา 28"
+    domains: [all]
+    forbidden_phrases:
+      - "ส่งข้อมูลไปต่างประเทศ"
+      - "transfer to overseas"
+      - "cross-border data"
+    enabled: true

@@ -1,0 +1,64 @@
+# Thai Financial Regulatory Rules
+# อ้างอิง: ข้อบังคับ ธปท., กลต., ก.ล.ต.
+
+domain: finance
+enabled: true
+version: "1.0"
+
+rules:
+  - id: FIN-001
+    severity: CRITICAL
+    message: "ห้ามให้คำแนะนำการลงทุนโดยไม่ได้รับอนุญาต (น.ส.3/น.ส.4)"
+    domains: [finance]
+    forbidden_phrases:
+      - "แนะนำให้ซื้อหุ้น"
+      - "ควรลงทุนใน"
+      - "หุ้นตัวนี้ดี"
+      - "รับประกันผลตอบแทน"
+      - "buy this stock"
+      - "guaranteed return"
+    patterns:
+      - '(?i)(แนะนำ|ชวน|เชิญชวน).*(ซื้อ|ลงทุน|เทรด)'
+    enabled: true
+
+  - id: FIN-002
+    severity: HIGH
+    message: "ห้ามให้คำปรึกษาด้านสินเชื่อโดยไม่ได้รับอนุญาต"
+    domains: [finance]
+    forbidden_phrases:
+      - "อนุมัติสินเชื่อ"
+      - "กู้ง่าย"
+      - "ปล่อยกู้"
+      - "loan approved"
+    keywords:
+      - "สินเชื่อ"
+      - "เงินกู้"
+      - "ดอกเบี้ยถูก"
+    enabled: true
+
+  - id: FIN-003
+    severity: MEDIUM
+    message: "ระมัดระวังการพาดพิงสถาบันการเงินโดยไม่ได้รับอนุญาต"
+    domains: [finance]
+    keywords:
+      - "ธนาคารแห่งประเทศไทย"
+      - "ธปท."
+      - "ก.ล.ต."
+      - "สำนักงานคณะกรรมการกำกับหลักทรัพย์"
+      - "BOT"
+      - "SEC Thailand"
+    enabled: true
+
+  - id: FIN-004
+    severity: HIGH
+    message: "ห้ามกล่าวอ้างผลตอบแทนในอดีตเพื่อรับประกันผลตอบแทนในอนาคต"
+    domains: [finance]
+    forbidden_phrases:
+      - "ผลตอบแทนย้อนหลัง"
+      - "เคยทำกำไรได้"
+      - "past performance"
+    keywords:
+      - "รับประกัน"
+      - "การันตี"
+      - "guaranteed"
+    enabled: true

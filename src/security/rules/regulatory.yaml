@@ -1,0 +1,19 @@
+rules:
+  - id: "PDPA-001"
+    enabled: true
+    severity: "CRITICAL"
+    domains: ["all"]
+    message: "Potential sensitive personal information detected (National ID)."
+    patterns:
+      - "\\d{1}-\\d{4}-\\d{5}-\\d{2}-\\d{1}"
+      - "\\d{13}"
+  
+  - id: "FIN-001"
+    enabled: true
+    severity: "HIGH"
+    domains: ["finance"]
+    message: "Unauthorized investment advice detected."
+    forbidden_phrases:
+      - "ลงทุนเลยได้กำไร"
+      - "การันตีผลตอบแทน"
+      - "เงินต้นไม่หายแน่นอน"
