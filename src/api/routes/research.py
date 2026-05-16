@@ -28,6 +28,9 @@ class ResearchTaskCreated(BaseModel):
     status: str
 
 
+from src.security.regulatory_guard import get_regulatory_guard, RegulatoryViolation
+from fastapi import HTTPException
+
 @router.post("/tasks", response_model=ResearchTaskCreated, status_code=202)
 async def create_research_task(
     body: ResearchTaskRequest,
@@ -37,6 +40,26 @@ async def create_research_task(
     session_factory = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ) -> ResearchTaskCreated:
+    
+    # === Regulatory Guard Check ===
+    guard = get_regulatory_guard()
+    try:
+        guard.check(
+            body.question,
+            context={"domain": "general", "tenant_id": current_user.get("tenant_id")}
+        )
+    except RegulatoryViolation as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "regulatory_violation",
+                "rule_id": e.rule_id,
+                "message": e.message,
+                "severity": e.severity
+            }
+        )
+    # === End Guard Check ===
+
     task_id = str(uuid.uuid4())
 
     # Populate request.state from JWT so _resolve_tenant_id works
@@ -47,12 +70,36 @@ async def create_research_task(
     tenant_id: str = _resolve_tenant_id(request)
 
     from sqlalchemy import text
+    from src.swarms.models import TenantSwarm
+    from src.swarms.catalog import get_swarm_catalog
+
     async with session_factory() as session:
         # Set RLS context so tenant_isolation policy allows the INSERT
         await session.execute(
             text("SELECT set_config('app.tenant_id', :tid, false)"),
             {"tid": tenant_id},
         )
+        
+        # Check for active swarm
+        result = await session.execute(select(TenantSwarm).filter(
+            TenantSwarm.tenant_id == tenant_id,
+            TenantSwarm.is_active == True
+        ))
+        swarm = result.scalars().first()
+
+        context: dict[str, Any] = {
+            "question": body.question,
+            "constraints": body.constraints,
+            "prior_hypotheses": body.prior_hypotheses,
+        }
+
+        if swarm:
+            tmpl = get_swarm_catalog().get(swarm.template_id)
+            if tmpl:
+                context["system_prompt"] = tmpl.system_prompt
+                context["kg_seed"] = tmpl.knowledge_graph_seed
+                context["domain"] = tmpl.domain
+
         task = ResearchTask(id=task_id, tenant_id=tenant_id, question=body.question, status="pending")
         session.add(task)
         await session.commit()

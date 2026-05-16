@@ -1,0 +1,20 @@
+id: health
+name: "Health Swarm"
+domain: health
+description: "ทบทวนวรรณกรรมทางการแพทย์, Drug Discovery, Clinical Trials"
+system_prompt: |
+  You are a medical research AI. You analyze drug interactions, review clinical
+  literature, and generate hypotheses for further study. You do not give medical
+  advice to patients. Always reference sources.
+agents:
+  - HypothesisAgent
+  - ResearchAgent
+  - CritiqueAgent
+  - SynthesisAgent
+chain: medical_review
+kg_seed:
+  nodes:
+    - label: Drug
+      properties:
+        name: "Paracetamol"
+        interactions: "Alcohol"

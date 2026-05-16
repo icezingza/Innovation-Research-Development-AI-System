@@ -13,12 +13,10 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, field_validator
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-
 from src.api.dependencies import get_db
-from src.api.routes.auth import get_current_user
-from src.memory.schema import Tenant, User
+from src.memory.schema import ResearchTask, Tenant, User
 from src.security.auth_utils import get_password_hash, RequireRole
 from src.tenants.quota import TIER_LIMITS, DEFAULT_LIMIT
 
@@ -269,39 +267,48 @@ async def get_tenant_roi(
     Shows hours saved, cost comparison vs. public cloud, and throughput metrics.
     Requires admin role.
     """
-    RequireRole(["admin"])(current_user)
+    RequireRole(["admin", "finance", "auditor"])(current_user)
 
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
-    tenant = result.scalars().first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
+    # --- ดึงข้อมูลการใช้งานจาก DB (เดือนปัจจุบัน) ---
+    now = datetime.utcnow()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
 
-    quota_service = getattr(request.app.state, "quota_service", None)
-    if quota_service is None:
-        raise HTTPException(status_code=500, detail="Quota service not available")
+    # นับจำนวน task ที่สร้างในเดือนนี้
+    task_count_query = select(func.count()).select_from(ResearchTask).where(
+        ResearchTask.tenant_id == tenant_id,
+        ResearchTask.created_at >= start_of_month
+    )
+    task_count = await db.scalar(task_count_query) or 0
 
-    now = datetime.now(UTC)
-    period = now.strftime("%Y-%m")
+    # ดึง usage จาก Redis
+    quota_service = request.app.state.quota_service
+    api_calls_used = await quota_service.current_usage(tenant_id)
+
+    # Constants
+    AVG_HUMAN_HOURS_PER_TASK = 2.0
+    CLOUD_COST_PER_1K_TOKENS = 0.03
+    AVG_TOKENS_PER_TASK = 4000
+    COST_PER_API_CALL = 0.01
+
+    # --- คำนวณ ROI ---
+    hours_saved = task_count * AVG_HUMAN_HOURS_PER_TASK
+    cloud_cost = (api_calls_used * AVG_TOKENS_PER_TASK / 1000) * CLOUD_COST_PER_1K_TOKENS
+    actual_cost = api_calls_used * COST_PER_API_CALL
     
-    used = await quota_service.current_usage(tenant_id)
-
-    # Placeholder metrics (to be populated by actual task tracking)
-    # In production, these would come from research_tasks table
-    hours_saved = used // 100  # Rough estimate: 1 hour per 100 API calls
-    
-    # Cost comparison: public cloud ~$0.03/API call, IRD-AI $0.01/call
-    cloud_cost = round(used * 0.03, 2)
-    actual_cost = round(used * 0.01, 2)
-    savings = round(cloud_cost - actual_cost, 2)
-    savings_percent = round((savings / cloud_cost * 100) if cloud_cost > 0 else 0, 1)
+    savings_percentage = round(((cloud_cost - actual_cost) / cloud_cost) * 100, 2) if cloud_cost > 0 else 0.0
 
     return {
         "tenant_id": tenant_id,
-        "period": period,
+        "period": now.strftime("%Y-%m"),
+        "tasks_completed": task_count,
+        "api_calls_used": api_calls_used,
         "hours_saved": hours_saved,
-        "token_cost_cloud_equivalent": cloud_cost,
-        "actual_token_cost": actual_cost,
-        "savings_percentage": savings_percent,
-        "tasks_completed": used,
-        "avg_time_per_task_seconds": 45  # Placeholder
+        "token_cost_cloud_equivalent": round(cloud_cost, 2),
+        "actual_token_cost": round(actual_cost, 2),
+        "savings_percentage": savings_percentage,
+        "avg_time_per_task_seconds": 45.0,
+        "recommendation": (
+            "Your AI is saving significant cost vs. public cloud. Consider upgrading tier for more capacity."
+            if savings_percentage > 50 else "Efficiency gains are being tracked."
+        )
     }

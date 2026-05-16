@@ -1,0 +1,176 @@
+# ============================================================
+# IRD-AI Air-Gapped Production Stack
+# สำหรับองค์กรที่ต้องการรันใน Private Network / ห้องปิด
+# ไม่มีการเชื่อมต่ออินเทอร์เน็ตใด ๆ
+# ============================================================
+version: "3.9"
+
+services:
+  # ========================
+  # Database Layer
+  # ========================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ird-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cognition
+      POSTGRES_USER: cognitive
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me-in-production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"  # Bind localhost only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognitive -d cognition"]
+      interval: 10s
+      retries: 5
+    networks:
+      - ird-internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: ird-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis-secret}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      retries: 5
+    networks:
+      - ird-internal
+
+  # ========================
+  # AI / ML Layer (Local)
+  # ========================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ird-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      retries: 3
+    networks:
+      - ird-internal
+    # หมายเหตุ: ต้อง Pull Model ก่อนในเครือข่ายที่ต่อเน็ตได้
+    # หรือ Side-load ไฟล์โมเดลเข้า Volume โดยตรง
+
+  # ========================
+  # Vector Database (RAG)
+  # ========================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ird-qdrant
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      retries: 5
+    networks:
+      - ird-internal
+
+  # ========================
+  # Graph Database
+  # ========================
+  neo4j:
+    image: neo4j:5-community
+    container_name: ird-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-password}
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 1G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD:-password}", "RETURN 1"]
+      interval: 15s
+      retries: 5
+    networks:
+      - ird-internal
+
+  # ========================
+  # Application Layer
+  # ========================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ird-app
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://cognitive:${DB_PASSWORD:-change-me-in-production}@postgres:5432/cognition
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis-secret}@redis:6379/0
+
+      # AI Providers (Local Only)
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+
+      # Vector & Graph
+      QDRANT_URL: http://qdrant:6333
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+
+      # Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-at-least-32-chars}
+      ENVIRONMENT: airgap
+
+      # Disable any outbound calls
+      OUTBOUND_CALLS_ENABLED: "false"
+      TELEMETRY_ENABLED: "false"
+      UPDATE_CHECK_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      retries: 5
+    networks:
+      - ird-internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_models:
+  qdrant_data:
+  neo4j_data:
+  neo4j_logs:
+
+networks:
+  ird-internal:
+    driver: bridge
+    internal: true  # ห้ามเชื่อมต่อภายนอก

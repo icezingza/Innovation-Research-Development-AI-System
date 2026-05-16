@@ -1,0 +1,21 @@
+id: legal
+name: "Legal Swarm"
+domain: legal
+description: "ตรวจสัญญา, วิเคราะห์คดี, สรุปกฎหมาย"
+system_prompt: |
+  You are a Thai legal AI assistant. You review contracts, summarize court rulings,
+  and provide legal research. You strictly follow PDPA and Thai Civil & Commercial Code.
+  Always include disclaimers: "This is not legal advice."
+agents:
+  - HypothesisAgent
+  - ResearchAgent
+  - CritiqueAgent
+  - SynthesisAgent
+chain: legal_review
+kg_seed:
+  nodes:
+    - label: Law
+      properties:
+        name: "PDPA"
+        section: "มาตรา 28"
+        description: "การส่งข้อมูลส่วนบุคคลไปต่างประเทศ"

@@ -1,0 +1,83 @@
+# IRD-AI Helm Chart Values
+# สำหรับ Air-Gapped Deployment
+
+global:
+  environment: airgap
+  imagePullPolicy: IfNotPresent
+
+# === Postgres ===
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  database: cognition
+  user: cognitive
+  password: "change-me"
+  storage:
+    size: 20Gi
+    storageClass: local-path
+
+# === Redis ===
+redis:
+  enabled: true
+  image: redis:7-alpine
+  password: "redis-secret"
+  storage:
+    size: 5Gi
+
+# === Ollama (Local LLM) ===
+ollama:
+  enabled: true
+  image: ollama/ollama:latest
+  model: llama3
+  storage:
+    size: 50Gi
+  resources:
+    requests:
+      memory: 8Gi
+      cpu: 2
+    limits:
+      memory: 32Gi
+      cpu: 8
+
+# === Qdrant (Vector DB) ===
+qdrant:
+  enabled: true
+  image: qdrant/qdrant:latest
+  storage:
+    size: 50Gi
+
+# === Neo4j (Graph DB) ===
+neo4j:
+  enabled: true
+  image: neo4j:5-community
+  password: "password"
+  storage:
+    size: 20Gi
+
+# === Application ===
+app:
+  enabled: true
+  replicas: 2
+  image: ird-ai/app:0.9.0
+  port: 8000
+  jwtSecret: "change-me-in-production-32-chars-minimum"
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 0.5
+    limits:
+      memory: 2Gi
+      cpu: 2
+  ingress:
+    enabled: false  # Air-gapped: no external ingress
+  # ใช้ ClusterIP หรือ NodePort ภายในเท่านั้น
+  service:
+    type: ClusterIP
+
+# === Monitoring (Optional, Local) ===
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false

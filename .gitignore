@@ -9,5 +9,6 @@ venv/
 dist/
 build/
 .env
+*.tar
 *.log
 .qdrant-initialized

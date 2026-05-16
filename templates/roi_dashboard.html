@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>IRD-AI ROI Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #0f172a; color: #e2e8f0; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .metric span:first-child { color: #94a3b8; }
+        .metric span:last-child { font-weight: bold; color: #38bdf8; }
+        h2 { color: #38bdf8; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.9em; }
+        .badge-success { background: #065f46; color: #6ee7b7; }
+        .badge-warning { background: #78350f; color: #fbbf24; }
+        canvas { max-height: 300px; margin: 20px 0; }
+        .loading { text-align: center; padding: 40px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 IRD-AI ROI Analytics</h1>
+    <div id="content" class="loading">Loading ROI data...</div>
+</div>
+
+<script>
+    // --- CONFIG ---
+    const API_BASE = window.location.origin;
+    const TENANT_ID = new URLSearchParams(window.location.search).get('tenant_id') || 'demo-tenant';
+    const JWT = localStorage.getItem('jwt') || '';
+
+    async function fetchROI() {
+        try {
+            const res = await fetch(`${API_BASE}/tenants/${TENANT_ID}/roi`, {
+                headers: { 'Authorization': `Bearer ${JWT}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch ROI');
+            const data = await res.json();
+            renderROI(data);
+        } catch (e) {
+            document.getElementById('content').innerHTML = `<p style="color:red">Error: ${e.message}</p>`;
+        }
+    }
+
+    function renderROI(data) {
+        const html = `
+            <div class="card">
+                <h2>Overview</h2>
+                <div class="metric"><span>Period</span><span>${data.period}</span></div>
+                <div class="metric"><span>Tasks Completed</span><span>${data.tasks_completed}</span></div>
+                <div class="metric"><span>API Calls Used</span><span>${data.api_calls_used}</span></div>
+                <div class="metric"><span>Avg Time per Task</span><span>${data.avg_time_per_task_seconds}s</span></div>
+            </div>
+            <div class="card">
+                <h2>Cost Comparison</h2>
+                <div class="metric"><span>☁️ Cloud Equivalent Cost</span><span>$${data.token_cost_cloud_equivalent}</span></div>
+                <div class="metric"><span>💡 IRD-AI Actual Cost</span><span>$${data.actual_token_cost}</span></div>
+                <div class="metric"><span>💰 Savings</span><span class="badge ${data.savings_percentage > 50 ? 'badge-success' : 'badge-warning'}">${data.savings_percentage}% saved</span></div>
+            </div>
+            <div class="card">
+                <h2>Efficiency Gains</h2>
+                <canvas id="roiChart"></canvas>
+                <p><strong>Hours Saved:</strong> ${data.hours_saved} hrs (${(data.hours_saved/8).toFixed(1)} working days)</p>
+                <p><em>${data.recommendation}</em></p>
+            </div>
+        `;
+        document.getElementById('content').innerHTML = html;
+
+        // Chart
+        const ctx = document.getElementById('roiChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Cloud Cost', 'IRD-AI Cost', 'Hours Saved'],
+                datasets: [{
+                    label: 'Value',
+                    data: [data.token_cost_cloud_equivalent, data.actual_token_cost, data.hours_saved],
+                    backgroundColor: ['#ef4444', '#38bdf8', '#10b981'],
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    fetchROI();
+</script>
+</body>
+</html>
