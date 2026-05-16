@@ -7,9 +7,9 @@
 - [x] Infrastructure Scaling (DistributedScalingManager)
 
 ## ระยะที่ 2: Visibility & User Experience (5-8 สัปดาห์)
-- [ ] Real-time Streaming UI (SSE/WebSocket)
-- [ ] Reasoning Trace Dashboard (Confidence Score Viz)
-- [ ] Interactive Graph Viewer (Neo4j Integration)
+- [x] Real-time Streaming UI (SSE/WebSocket)
+- [x] Reasoning Trace Dashboard (Confidence Score Viz)
+- [x] Interactive Graph Viewer (Neo4j Integration)
 
 ## ระยะที่ 3: Enterprise & SaaS Readiness (9-12 สัปดาห์)
 - [ ] Multi-tenant Infrastructure

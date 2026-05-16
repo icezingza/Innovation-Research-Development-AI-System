@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -29,6 +31,14 @@ def get_db_session(request: Request) -> async_sessionmaker[AsyncSession]:
     if factory is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
     return factory
+
+
+async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    factory = getattr(request.app.state, "db_session", None)
+    if factory is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    async with factory() as session:
+        yield session
 
 
 def get_reasoning_trace(request: Request) -> ReasoningTrace:

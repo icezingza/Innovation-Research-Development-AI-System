@@ -1,7 +1,17 @@
+"""SQLAlchemy ORM schema — single declarative Base + all mapped tables.
+
+Tenant and User are defined in src/tenants/models.py (canonical source).
+They are re-exported here so existing imports of the form
+  `from src.memory.schema import Tenant, User`
+continue to work without change.
+
+tenant_id columns use String(36) so the schema works with both PostgreSQL (via
+Alembic migrations that set the real UUID type + RLS) and SQLite (unit tests).
+"""
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, Float, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -9,11 +19,20 @@ class Base(DeclarativeBase):
     pass
 
 
+# Tenant and User are imported here AFTER Base is defined to avoid circular
+# imports (tenants/models.py imports Base from this module).
+# The `noqa` comments suppress F401 (imported but unused) in linting.
+from src.tenants.models import Tenant, User  # noqa: E402, F401
+
+
 class ResearchTask(Base):
     __tablename__ = "research_tasks"
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     question: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
@@ -37,10 +56,11 @@ class WorkflowRecord(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    goal: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(20), default="pending", nullable=False
+    tenant_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
+    goal: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
     sub_questions: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     results: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -59,6 +79,9 @@ class HypothesisRecord(Base):
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     statement: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
@@ -79,6 +102,9 @@ class ReasoningTraceRecord(Base):
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     operation: Mapped[str] = mapped_column(String(100), nullable=False)
     input_hash: Mapped[str] = mapped_column(String(16), nullable=False)

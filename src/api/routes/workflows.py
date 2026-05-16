@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.api.dependencies import get_db_session, get_workflow
 from src.memory.schema import WorkflowRecord
 from src.orchestration.research_workflow import ResearchWorkflow
+from src.tenants.context import SYSTEM_TENANT_ID
 
 router = APIRouter(prefix="/research", tags=["workflows"])
 logger = logging.getLogger(__name__)
@@ -67,17 +68,29 @@ async def _run_workflow(
             await session.commit()
 
 
+def _resolve_tenant_id(http_request: Request) -> str:
+    """Extract tenant ID from request state, defaulting to SYSTEM_TENANT_ID."""
+    raw = getattr(http_request.state, "tenant_id", None)
+    if not raw:
+        tenant_ctx = getattr(http_request.state, "tenant", None)
+        raw = getattr(tenant_ctx, "tenant_id", None)
+    return str(raw) if raw else SYSTEM_TENANT_ID
+
+
 @router.post("/workflows", status_code=202, response_model=WorkflowResponse)
 async def create_workflow(
     request: WorkflowRequest,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     session_factory: async_sessionmaker[AsyncSession] = Depends(get_db_session),
     workflow: ResearchWorkflow = Depends(get_workflow),
 ) -> WorkflowResponse:
     workflow_id = str(uuid.uuid4())
+    tenant_id: str = _resolve_tenant_id(http_request)
     async with session_factory() as session:
         record = WorkflowRecord(
             id=workflow_id,
+            tenant_id=tenant_id,
             goal=request.goal,
             status="pending",
         )

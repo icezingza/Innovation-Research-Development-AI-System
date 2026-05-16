@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive FinOps - {{ tenant_id }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: #2c3e50; color: white; padding: 20px; margin-bottom: 30px; border-radius: 8px; }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        .tenant-info { font-size: 14px; color: #ecf0f1; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h2 { font-size: 14px; color: #95a5a6; text-transform: uppercase; margin-bottom: 10px; }
+        .card .value { font-size: 32px; font-weight: 600; color: #2c3e50; }
+        .card .unit { font-size: 14px; color: #7f8c8d; }
+        .card.warning { border-left: 4px solid #e74c3c; }
+        .card.success { border-left: 4px solid #27ae60; }
+        .recommendation { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-top: 10px; font-size: 13px; color: #856404; }
+        .chart-container { position: relative; height: 300px; margin-top: 20px; }
+        .footer { text-align: center; color: #7f8c8d; font-size: 12px; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Cognitive FinOps Dashboard</h1>
+            <div class="tenant-info">Tenant ID: <code>{{ tenant_id }}</code></div>
+        </header>
+
+        <div id="loading" style="text-align: center; padding: 40px;">
+            <p>Loading FinOps data...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="grid">
+                <div class="card">
+                    <h2>Quota Used</h2>
+                    <div class="value"><span id="quota-used">-</span> / <span id="quota-limit">-</span></div>
+                    <div class="unit">API calls this month</div>
+                    <div id="usage-bar" style="background: #ecf0f1; height: 8px; border-radius: 4px; margin-top: 12px; overflow: hidden;">
+                        <div id="usage-fill" style="background: #3498db; height: 100%; width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Estimated Cost</h2>
+                    <div class="value">$<span id="estimated-cost">-</span></div>
+                    <div class="unit">this billing period</div>
+                </div>
+
+                <div class="card" id="depletion-card">
+                    <h2>Budget Depletion</h2>
+                    <div class="value" id="depletion-date">-</div>
+                    <div class="unit">projected</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Billing Period</h2>
+                <p><strong>Current:</strong> <span id="billing-period">-</span></p>
+                <p id="recommendation-text"></p>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Last updated: <span id="updated-at">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        const tenantId = '{{ tenant_id }}';
+        const token = localStorage.getItem('token');
+
+        fetch(`/tenants/${tenantId}/finops`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            // Fill in the data
+            document.getElementById('quota-used').textContent = data.quota_used.toLocaleString();
+            document.getElementById('quota-limit').textContent = data.quota_limit.toLocaleString();
+            document.getElementById('estimated-cost').textContent = data.estimated_cost.toFixed(2);
+            document.getElementById('billing-period').textContent = data.current_billing_period;
+            document.getElementById('updated-at').textContent = new Date().toLocaleString();
+
+            // Usage bar
+            const percent = (data.quota_used / data.quota_limit * 100);
+            document.getElementById('usage-fill').style.width = Math.min(percent, 100) + '%';
+
+            // Depletion forecast
+            if (data.budget_depletion_forecast) {
+                const depletion = new Date(data.budget_depletion_forecast);
+                document.getElementById('depletion-date').textContent = depletion.toLocaleDateString();
+                document.getElementById('depletion-card').className = 'card ' + (percent > 80 ? 'warning' : 'success');
+            } else {
+                document.getElementById('depletion-card').className = 'card success';
+                document.getElementById('depletion-date').textContent = 'No depletion';
+            }
+
+            // Recommendation
+            if (data.recommendation) {
+                document.getElementById('recommendation-text').innerHTML = 
+                    '<div class="recommendation">💡 ' + data.recommendation + '</div>';
+            }
+
+            // Simple chart showing usage trend
+            const ctx = document.getElementById('costChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Used', 'Available'],
+                    datasets: [{
+                        data: [data.quota_used, Math.max(0, data.quota_limit - data.quota_used)],
+                        backgroundColor: ['#3498db', '#ecf0f1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: { display: true, text: 'Quota Usage This Month' }
+                    }
+                }
+            });
+        })
+        .catch(err => {
+            document.getElementById('loading').innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+        });
+    </script>
+</body>
+</html>

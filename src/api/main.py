@@ -16,11 +16,15 @@ from src.api.routes.runtime import router as runtime_router
 from src.api.routes.sessions import router as sessions_router
 from src.api.routes.streams import router as streams_router
 from src.api.routes.workflows import router as workflows_router
+from src.api.routes.dashboard import router as dashboard_router
+from src.api.routes.tenants import router as tenants_router
 
 
 def create_app(lifespan_override=None) -> FastAPI:
     from src.api.middleware import SecurityMiddleware
+    from src.security.rate_limit_middleware import RateLimitMiddleware
     from src.tenants.middleware import TenantMiddleware
+    from src.tenants.quota_middleware import QuotaMiddleware
 
     app = FastAPI(
         title="Cognitive Research Runtime",
@@ -28,8 +32,12 @@ def create_app(lifespan_override=None) -> FastAPI:
         lifespan=lifespan_override or lifespan,
     )
 
-    app.add_middleware(SecurityMiddleware)
+    # Middleware stack (last added = first executed):
+    # Request flow: Security → Tenant → RateLimit → Quota → Route
+    app.add_middleware(QuotaMiddleware)
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(TenantMiddleware)
+    app.add_middleware(SecurityMiddleware)
 
     app.include_router(health_router)
     app.include_router(auth_router)
@@ -43,6 +51,8 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.include_router(streams_router)
     app.include_router(agenda_router)
     app.include_router(sessions_router)
+    app.include_router(dashboard_router)
+    app.include_router(tenants_router)
 
     # Static files and client-side routing
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")

@@ -3,7 +3,24 @@
     "allow": [
       "Bash(C:\\\\Users\\\\icezi\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\5.1.0\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh --project-dir \"C:\\\\Users\\\\icezi\\\\Downloads\\\\Github repo\\\\Innovation-Research-Development-AI-System-main\\\\Innovation-Research-Development-AI-System-main\")",
       "PowerShell(node --version)",
-      "PowerShell(npm --version)"
+      "PowerShell(npm --version)",
+      "Bash(python -c \"from src.tenants.models import Tenant, User, TenantMember; from src.tenants.context import TenantContext, SYSTEM_TENANT_ID; print\\('OK'\\)\")",
+      "Bash(python -c \"import alembic.versions.x002_tenant_tables; print\\('Migration syntax OK'\\)\")",
+      "Bash(python -c \"import sys; exec\\(open\\('alembic/versions/002_tenant_tables.py'\\).read\\(\\)\\); print\\('Migration syntax OK'\\)\")",
+      "mcp__Windows-MCP__PowerShell",
+      "Bash(python -c \"from src.tenants.middleware import TenantMiddleware; print\\('✓ TenantMiddleware import OK'\\)\")",
+      "Bash(python -c \"from src.tenants.middleware import TenantMiddleware; print\\('TenantMiddleware import OK'\\)\")",
+      "Bash(python -c \"from src.api.main import create_app; app = create_app\\(\\); print\\('Main app creation OK'\\)\")",
+      "mcp__Windows-MCP__FileSystem",
+      "Bash(python -m pytest tests/test_tenants.py -v)",
+      "Bash(python -m pytest --tb=short -q)",
+      "Bash(python -m pytest tests/test_tenants.py -v --tb=short)",
+      "Bash(python -c ' *)",
+      "Bash(pip uninstall *)",
+      "Bash(pip show *)",
+      "Bash(pip cache *)",
+      "Bash(python -c \"from src.auth.refresh_store import RefreshTokenStore; print\\('OK'\\)\")",
+      "Bash(python -c \"from pydantic import EmailStr; print\\('OK'\\)\")"
     ]
   }
 }

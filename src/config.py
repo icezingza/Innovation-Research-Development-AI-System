@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # --- Infrastructure ---
     postgres_url: str = (
-        "postgresql+asyncpg://cognitive:cognitive@localhost/cognition"
+        "postgresql+asyncpg://app_user:app_secret@localhost/cognition"
     )
     redis_url: str = "redis://localhost:6379"
     qdrant_host: str = "localhost"

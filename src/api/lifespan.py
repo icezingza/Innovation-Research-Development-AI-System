@@ -40,6 +40,8 @@ from src.runtime.stream_manager import StreamManager
 from src.runtime.worker_pool import AsyncWorkerPool
 from src.security.api_keys import APIKeyManager
 from src.security.rate_limiter import RateLimiter
+from src.security.redis_rate_limiter import RedisRateLimiter
+from src.tenants.quota import QuotaService
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     postgres_store = PostgresMemoryStore(url=settings.postgres_url)
     pg_ok = await _probe("postgres", postgres_store.healthcheck(), errors)
-    if pg_ok:
-        try:
-            await postgres_store.init_schema()
-        except Exception as exc:
-            logger.error("schema_init_failed", extra={"error": str(exc)})
-            pg_ok = False
+    # Schema is managed by Alembic — do not call init_schema() here
 
     neo4j = Neo4jKnowledgeConnector(
         uri=settings.neo4j_uri,
@@ -126,6 +123,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if pg_ok:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    # --- quota + rate limiter services ---
+    quota_service = QuotaService(redis_client=redis_store.client) if redis_ok else None
+    redis_rate_limiter = RedisRateLimiter(redis_client=redis_store.client) if redis_ok else None
 
     # --- security ---
     key_manager = APIKeyManager(raw_keys=settings.api_keys)
@@ -236,6 +237,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.quality_tracker = quality_tracker
     app.state.key_manager = key_manager
     app.state.rate_limiter = rate_limiter
+    app.state.quota_service = quota_service
+    app.state.redis_rate_limiter = redis_rate_limiter
     app.state.service_errors = errors
     app.state.settings = settings
     app.state.adaptive_config = adaptive_config

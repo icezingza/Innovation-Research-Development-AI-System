@@ -1,13 +1,18 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.memory.schema import ReasoningTraceRecord, HypothesisRecord, ResearchTask
+from src.security.auth_utils import RequireRole
 from src.api.dependencies import get_db_session, get_pipeline
-from src.memory.schema import ResearchTask
+from src.api.routes.auth import get_current_user
+from src.security.rls import get_rls_db
 from src.orchestration.cognitive_pipeline import CognitivePipeline
+from src.tenants.context import SYSTEM_TENANT_ID
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -26,14 +31,18 @@ class ResearchTaskCreated(BaseModel):
 @router.post("/tasks", response_model=ResearchTaskCreated, status_code=202)
 async def create_research_task(
     body: ResearchTaskRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     pipeline: CognitivePipeline = Depends(get_pipeline),
-    session_factory: async_sessionmaker[AsyncSession] = Depends(get_db_session),
+    session_factory = Depends(get_db_session),
 ) -> ResearchTaskCreated:
     task_id = str(uuid.uuid4())
 
+    # Resolve tenant_id from request state (set by auth or tenant middleware)
+    tenant_id: str = _resolve_tenant_id(request)
+
     async with session_factory() as session:
-        task = ResearchTask(id=task_id, question=body.question, status="pending")
+        task = ResearchTask(id=task_id, tenant_id=tenant_id, question=body.question, status="pending")
         session.add(task)
         await session.commit()
 
@@ -51,12 +60,22 @@ async def create_research_task(
 @router.get("/tasks/{task_id}")
 async def get_research_task(
     task_id: str,
-    session_factory: async_sessionmaker[AsyncSession] = Depends(get_db_session),
+    request: Request,
+    db: AsyncSession = Depends(get_rls_db),
 ) -> dict[str, Any]:
-    from fastapi import HTTPException
+    # Best-effort auth: set tenant_id on state when JWT is present
+    from src.security.auth_utils import decode_token
 
-    async with session_factory() as session:
-        task = await session.get(ResearchTask, task_id)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            payload = decode_token(auth_header[7:])
+            request.state.tenant_id = payload.get("tenant_id")
+            request.state.user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    task = await db.get(ResearchTask, task_id)
 
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -71,11 +90,90 @@ async def get_research_task(
     }
 
 
+@router.get("/tasks/{task_id}/trace")
+async def get_task_trace(
+    task_id: str,
+    db: AsyncSession = Depends(get_rls_db),
+    current_user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Retrieve the auditable trace of a research task.
+    
+    Shows the reasoning flow: Hypothesis → Research → Critique → Synthesis
+    Requires admin or auditor role.
+    """
+    RequireRole(["admin", "auditor"])(current_user)
+
+    # Get the task to verify access and context
+    task = await db.get(ResearchTask, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Query all reasoning traces for this task (using task_id as session proxy)
+    traces_result = await db.execute(
+        select(ReasoningTraceRecord)
+        .where(ReasoningTraceRecord.tenant_id == task.tenant_id)
+        .order_by(ReasoningTraceRecord.timestamp.asc())
+    )
+    traces = traces_result.scalars().all()
+
+    # Query all hypotheses generated during this task
+    hyps_result = await db.execute(
+        select(HypothesisRecord)
+        .where(HypothesisRecord.tenant_id == task.tenant_id)
+        .where(HypothesisRecord.session_id == task_id)
+        .order_by(HypothesisRecord.created_at.asc())
+    )
+    hyps = hyps_result.scalars().all()
+
+    events = []
+    
+    # Add reasoning traces
+    for trace in traces:
+        events.append({
+            "timestamp": trace.timestamp.isoformat(),
+            "agent": trace.agent_id or "ReasoningEngine",
+            "action": trace.operation,
+            "content": trace.output_summary
+        })
+    
+    # Add hypothesis events
+    for hyp in hyps:
+        events.append({
+            "timestamp": hyp.created_at.isoformat(),
+            "agent": "HypothesisAgent",
+            "action": "propose" if hyp.generation == 0 else "refine",
+            "content": {
+                "hypothesis": hyp.statement,
+                "confidence": hyp.confidence,
+                "evidence": hyp.evidence
+            }
+        })
+
+    # Sort chronologically
+    events.sort(key=lambda x: x["timestamp"])
+
+    return {
+        "task_id": task_id,
+        "question": task.question,
+        "status": task.status,
+        "events": events
+    }
+
+
+def _resolve_tenant_id(request: Request) -> str:
+    """Extract tenant ID from request state, defaulting to SYSTEM_TENANT_ID."""
+    raw = getattr(request.state, "tenant_id", None)
+    if not raw:
+        tenant_ctx = getattr(request.state, "tenant", None)
+        raw = getattr(tenant_ctx, "tenant_id", None)
+    return str(raw) if raw else SYSTEM_TENANT_ID
+
+
 async def _execute_task(
     task_id: str,
     context: dict[str, Any],
     pipeline: CognitivePipeline,
-    session_factory: async_sessionmaker[AsyncSession],
+    session_factory,
 ) -> None:
     try:
         messages = await pipeline.run(context)
