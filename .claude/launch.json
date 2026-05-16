@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Innovation-Research-Development (Backend)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "src.api.main:app", "--reload", "--port", "8013"],
+      "port": 8013
+    },
+    {
+      "name": "Innovation-Research-Development (Frontend)",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-Command", "cd frontend; npm run dev"],
+      "port": 5173
+    }
+  ]
+}
