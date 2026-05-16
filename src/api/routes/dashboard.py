@@ -9,6 +9,10 @@ templates = Jinja2Templates(directory="templates")
 async def trace_dashboard(request: Request, task_id: str):
     return templates.TemplateResponse("trace_dashboard.html", {"request": request, "task_id": task_id})
 
+@router.get("/roi", response_class=HTMLResponse)
+async def roi_dashboard(request: Request):
+    return templates.TemplateResponse("roi_dashboard.html", {"request": request})
+
 @router.get("/finops/{tenant_id}", response_class=HTMLResponse)
 async def finops_dashboard(request: Request, tenant_id: str):
     return templates.TemplateResponse("finops_dashboard.html", {"request": request, "tenant_id": tenant_id})
