@@ -5,6 +5,7 @@ import os
 
 from src.api.health import router as health_router
 from src.api.lifespan import lifespan
+from src.api.routes.auth import router as auth_router
 from src.api.routes.agenda import router as agenda_router
 from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
@@ -31,6 +32,7 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.add_middleware(TenantMiddleware)
 
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(research_router)
     app.include_router(workflows_router)
     app.include_router(runtime_router)
