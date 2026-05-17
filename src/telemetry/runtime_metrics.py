@@ -6,6 +6,12 @@ runtime_events = Counter(
     ["event_type"],
 )
 
+inference_tokens = Counter(
+    "inference_tokens_total",
+    "Total tokens used by inference provider",
+    ["provider", "token_type"],  # token_type: input | output | cached | cache_write
+)
+
 active_agents = Gauge(
     "active_agents",
     "Number of currently active cognitive agents",

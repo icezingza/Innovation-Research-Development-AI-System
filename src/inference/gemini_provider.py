@@ -8,6 +8,7 @@ from src.inference.base_provider import (
     CompletionRequest,
     CompletionResponse,
 )
+from src.telemetry.runtime_metrics import inference_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +49,20 @@ class GeminiProvider(BaseInferenceProvider):
         )
 
         # Build payload according to Gemini API spec
+        generation_config: dict = {
+            "temperature": request.temperature,
+            "maxOutputTokens": request.max_tokens,
+        }
+
+        # Thinking budget: 0 = disabled, >0 = max thinking tokens (Gemini 2.5+)
+        if request.thinking_budget > 0:
+            generation_config["thinkingConfig"] = {
+                "thinkingBudget": request.thinking_budget
+            }
+
         payload = {
-            "contents": [
-                {
-                    "parts": [{"text": request.prompt}],
-                }
-            ],
-            "generationConfig": {
-                "temperature": request.temperature,
-                "maxOutputTokens": request.max_tokens,
-            },
+            "contents": [{"parts": [{"text": request.prompt}]}],
+            "generationConfig": generation_config,
         }
 
         # Add system instruction if provided
@@ -99,12 +104,23 @@ class GeminiProvider(BaseInferenceProvider):
                 )
                 raise ValueError("Failed to parse Gemini response") from e
 
-            # Extract usage metadata
-            tokens_used = data.get("usageMetadata", {}).get("totalTokenCount")
+            usage = data.get("usageMetadata", {})
+            tokens_used = usage.get("totalTokenCount")
+            # cachedContentTokenCount is present when implicit context caching hits
+            cached = usage.get("cachedContentTokenCount") or 0
+
+            if cached:
+                inference_tokens.labels(provider="gemini", token_type="cached").inc(cached)
+                logger.info("gemini_cache_hit", extra={"cached_tokens": cached})
+            if tokens_used:
+                inference_tokens.labels(provider="gemini", token_type="input").inc(
+                    usage.get("promptTokenCount", 0)
+                )
 
             return CompletionResponse(
                 content=content,
                 model=self._model,
                 provider=self.name,
                 tokens_used=tokens_used,
+                cached_tokens=cached or None,
             )

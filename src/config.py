@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     neo4j_user: str = "neo4j"
     neo4j_password: str = "password"
 
+    # --- Anthropic (native API — enables prompt caching + extended thinking) ---
+    # Cache hit = 0.1x input cost. Stack with batch API = 0.05x total.
+    # Fast: claude-haiku-4-5-20251001  Deep: claude-sonnet-4-6
+    anthropic_api_key: str = ""
+    anthropic_model_fast: str = "claude-haiku-4-5-20251001"
+    anthropic_model_deep: str = "claude-sonnet-4-6"
+
     # --- OpenAI-compatible inference ---
     # Works with OpenAI, OpenRouter, vLLM, LM Studio — leave blank for heuristic mode
     openai_api_key: str = ""

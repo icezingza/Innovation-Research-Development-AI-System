@@ -7,12 +7,19 @@ class CompletionRequest(BaseModel):
     system: str = ""
     temperature: float = 0.7
     max_tokens: int = 2048
+    # thinking_budget=0 disables extended thinking; >0 caps thinking tokens
+    thinking_budget: int = 0
+
 
 class CompletionResponse(BaseModel):
     content: str
     model: str
     provider: str
     tokens_used: int | None = None
+    # Tokens served from cache (0.1x price on Anthropic, auto on OpenAI/Gemini)
+    cached_tokens: int | None = None
+    # Tokens written to cache this request (1.25x–2x on Anthropic)
+    cache_write_tokens: int | None = None
 
 class BaseInferenceProvider(ABC):
     """Contract that all inference providers must satisfy.
