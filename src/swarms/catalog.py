@@ -11,6 +11,7 @@ class SwarmTemplate:
         self.system_prompt = data.get("system_prompt", "")
         self.recommended_agents = data.get("agents", [])
         self.knowledge_graph_seed = data.get("kg_seed", {})
+        self.description = data.get("description", "")
         self.default_chain = data.get("chain", "default")
         self.regulatory_tags: list = data.get("regulatory_tags", [])
 
