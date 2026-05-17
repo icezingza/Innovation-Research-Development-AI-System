@@ -12,6 +12,7 @@ class SwarmTemplate:
         self.recommended_agents = data.get("agents", [])
         self.knowledge_graph_seed = data.get("kg_seed", {})
         self.default_chain = data.get("chain", "default")
+        self.regulatory_tags: list = data.get("regulatory_tags", [])
 
 
 class SwarmCatalog:

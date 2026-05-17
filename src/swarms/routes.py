@@ -24,6 +24,27 @@ async def list_swarms(current_user=Depends(get_current_user)):
     ]
 
 
+@router.get("/{template_id}")
+async def get_swarm_detail(
+    template_id: str,
+    current_user=Depends(get_current_user),
+):
+    catalog = get_swarm_catalog()
+    template = catalog.get(template_id)
+    if template is None:
+        raise HTTPException(404, "Template not found")
+    return {
+        "id": template.id,
+        "name": template.name,
+        "domain": template.domain,
+        "description": template.__dict__.get("description", ""),
+        "regulatory_tags": template.__dict__.get("regulatory_tags", []),
+        "agents": template.recommended_agents,
+        "kg_seed": template.knowledge_graph_seed,
+        "system_prompt": template.system_prompt,
+    }
+
+
 @router.post("/tenants/{tenant_id}/activate")
 async def activate_swarm(
     tenant_id: str,
