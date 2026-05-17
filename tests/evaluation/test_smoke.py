@@ -15,4 +15,5 @@ def test_require_services_fixture_runs(require_services):
 async def test_api_client_health(api_client):
     response = await api_client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    # Endpoint returns {"runtime": "healthy"|"degraded", "unavailable_services": [...]}
+    assert response.json()["runtime"] == "healthy"
