@@ -60,6 +60,11 @@ class GeminiProvider(BaseInferenceProvider):
             },
         }
 
+        if request.thinking.enabled:
+            payload["generationConfig"]["thinkingConfig"] = {
+                "thinkingBudget": request.thinking.budget_tokens
+            }
+
         # Add system instruction if provided
         if request.system:
             payload["system_instruction"] = {
@@ -84,7 +89,6 @@ class GeminiProvider(BaseInferenceProvider):
                         "response": response.text,
                     },
                 )
-                # Avoid printing the full URL in the exception as it might contain the key if we used query params
                 raise RuntimeError(f"Gemini API error {response.status_code}: {response.text}")
 
             data = response.json()
@@ -100,11 +104,16 @@ class GeminiProvider(BaseInferenceProvider):
                 raise ValueError("Failed to parse Gemini response") from e
 
             # Extract usage metadata
-            tokens_used = data.get("usageMetadata", {}).get("totalTokenCount")
+            usage = data.get("usageMetadata", {})
+            tokens_used = usage.get("totalTokenCount")
+            cached_tokens = usage.get("cachedContentTokenCount", 0)
 
             return CompletionResponse(
                 content=content,
                 model=self._model,
                 provider=self.name,
                 tokens_used=tokens_used,
+                cached_tokens=cached_tokens,
+                cache_read_tokens=cached_tokens,
+                cache_creation_tokens=0,
             )
