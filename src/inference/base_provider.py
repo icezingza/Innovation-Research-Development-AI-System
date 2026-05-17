@@ -1,18 +1,28 @@
 from abc import ABC, abstractmethod
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+class ThinkingConfig(BaseModel):
+    enabled: bool = False
+    budget_tokens: int = 1024
 
 class CompletionRequest(BaseModel):
     prompt: str
     system: str = ""
     temperature: float = 0.7
     max_tokens: int = 2048
+    thinking: ThinkingConfig = Field(default_factory=ThinkingConfig)
+    enable_caching: bool = True
 
 class CompletionResponse(BaseModel):
     content: str
     model: str
     provider: str
     tokens_used: int | None = None
+    cached_tokens: int | None = 0
+    cache_read_tokens: int | None = 0
+    cache_creation_tokens: int | None = 0
+
 
 class BaseInferenceProvider(ABC):
     """Contract that all inference providers must satisfy.

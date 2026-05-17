@@ -106,3 +106,30 @@ async def test_disabled_embedding_provider_raises():
     assert not provider.enabled
     with pytest.raises(RuntimeError):
         await provider.embed("test")
+
+
+def test_completion_request_response_extended_fields():
+    from src.inference.base_provider import CompletionRequest, CompletionResponse, ThinkingConfig
+    
+    req = CompletionRequest(
+        prompt="test prompt",
+        thinking=ThinkingConfig(enabled=True, budget_tokens=2048),
+        enable_caching=True
+    )
+    assert req.thinking.enabled is True
+    assert req.thinking.budget_tokens == 2048
+    assert req.enable_caching is True
+
+    resp = CompletionResponse(
+        content="test content",
+        model="test-model",
+        provider="test-provider",
+        tokens_used=100,
+        cached_tokens=50,
+        cache_read_tokens=40,
+        cache_creation_tokens=10
+    )
+    assert resp.cached_tokens == 50
+    assert resp.cache_read_tokens == 40
+    assert resp.cache_creation_tokens == 10
+
