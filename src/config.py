@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     gemini_model_fast: str = "gemini-1.5-flash"
     gemini_model_deep: str = "gemini-1.5-pro"
 
+    # --- Anthropic inference ---
+    anthropic_api_key: str = ""
+
+
     # --- DeepSeek Inference ---
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
