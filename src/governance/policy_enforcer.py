@@ -1,11 +1,15 @@
 import logging
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from src.governance.audit_log import AuditEntry, GovernanceAuditLog
 from src.protocols.agent_message import AgentMessage
 from src.telemetry.runtime_metrics import runtime_events
+
+if TYPE_CHECKING:
+    from src.security.regulatory_guard import RegulatoryGuard
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +39,18 @@ class PolicyEnforcer:
         self,
         max_content_bytes: int = 1_000_000,
         audit_log: "GovernanceAuditLog | None" = None,
+        regulatory_guard: "RegulatoryGuard | None" = None,
+        enable_regulatory_guard: bool = True,
     ) -> None:
         self._max_content_bytes = max_content_bytes
         self._audit_log = audit_log
+
+        if regulatory_guard is None and enable_regulatory_guard:
+            from src.security.regulatory_guard import get_regulatory_guard
+
+            self._regulatory_guard = get_regulatory_guard()
+        else:
+            self._regulatory_guard = regulatory_guard
 
     async def _audit(self, message: AgentMessage, result: PolicyResult) -> None:
         if self._audit_log is None:
@@ -78,6 +91,29 @@ class PolicyEnforcer:
             runtime_events.labels(event_type="policy_deny").inc()
             await self._audit(message, result)
             return result
+
+        # Check Thai regulatory compliance
+        if self._regulatory_guard is not None:
+            try:
+                self._regulatory_guard.check(str(message.content))
+            except Exception as e:
+                from src.security.regulatory_guard import RegulatoryViolation
+
+                if isinstance(e, RegulatoryViolation):
+                    result = PolicyResult(
+                        decision=PolicyDecision.DENY,
+                        reason=f"Regulatory violation ({e.rule_id}): {e.message}",
+                        message_id=message.id,
+                    )
+                    logger.warning(
+                        "policy_deny",
+                        extra={"message_id": message.id, "reason": result.reason},
+                    )
+                    runtime_events.labels(event_type="policy_deny").inc()
+                    await self._audit(message, result)
+                    return result
+                else:
+                    raise e
 
         runtime_events.labels(event_type="policy_allow").inc()
         result = PolicyResult(
