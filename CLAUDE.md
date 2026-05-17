@@ -1,4 +1,17 @@
 
+# 📚 Documentation Handbook (NRE v5.0.0 Sovereign Edition)
+
+Before writing, updating, or testing any codebase features, you MUST read the relevant handbook spec first:
+* **Product Goals & Journeys:** Read [docs/prd.md](docs/prd.md)
+* **UI/UX & Dashboard Elements:** Read [docs/design.md](docs/design.md)
+* **Subsystems & Core Topology:** Read [docs/architecture.md](docs/architecture.md)
+* **Agent Specs & Prompt Roles:** Read [docs/agents.md](docs/agents.md)
+* **5-Tier Memory & Vector RAG:** Read [docs/memory.md](docs/memory.md)
+* **Workflow Tasks & Concurrency:** Read [docs/tasks.md](docs/tasks.md)
+* **Sovereign Rules & Security:** Read [docs/rules.md](docs/rules.md)
+* **Skill System & Context7 CLI:** Read [docs/skills.md](docs/skills.md)
+
+---
 
 # Project Overview
 
