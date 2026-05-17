@@ -23,6 +23,19 @@ class AnthropicProvider(BaseInferenceProvider):
         self._model = model
         self._reasoning_tier = reasoning_tier
         self._enabled = bool(api_key)
+        self._client: httpx.AsyncClient | None = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=120.0,
+                limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
 
     @property
     def name(self) -> str:
@@ -78,40 +91,40 @@ class AnthropicProvider(BaseInferenceProvider):
                 "budget_tokens": request.thinking.budget_tokens,
             }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
+        client = await self._get_client()
+        response = await client.post(url, headers=headers, json=payload)
 
-            if response.status_code != 200:
-                logger.error(
-                    "anthropic_api_error",
-                    extra={
-                        "status_code": response.status_code,
-                        "response": response.text,
-                    },
-                )
-                raise RuntimeError(
-                    f"Anthropic API error {response.status_code}: {response.text}"
-                )
-
-            data = response.json()
-
-            content_text = ""
-            for block in data.get("content", []):
-                if block.get("type") == "text":
-                    content_text += block.get("text", "")
-
-            usage = data.get("usage", {})
-            tokens_used = usage.get("output_tokens", 0) + usage.get("input_tokens", 0)
-
-            cache_read_tokens = usage.get("cache_read_input_tokens", 0)
-            cache_creation_tokens = usage.get("cache_creation_input_tokens", 0)
-
-            return CompletionResponse(
-                content=content_text,
-                model=self._model,
-                provider=self.name,
-                tokens_used=tokens_used,
-                cached_tokens=cache_read_tokens,
-                cache_read_tokens=cache_read_tokens,
-                cache_creation_tokens=cache_creation_tokens,
+        if response.status_code != 200:
+            logger.error(
+                "anthropic_api_error",
+                extra={
+                    "status_code": response.status_code,
+                    "response": response.text,
+                },
             )
+            raise RuntimeError(
+                f"Anthropic API error {response.status_code}: {response.text}"
+            )
+
+        data = response.json()
+
+        content_text = ""
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                content_text += block.get("text", "")
+
+        usage = data.get("usage", {})
+        tokens_used = usage.get("output_tokens", 0) + usage.get("input_tokens", 0)
+
+        cache_read_tokens = usage.get("cache_read_input_tokens", 0)
+        cache_creation_tokens = usage.get("cache_creation_input_tokens", 0)
+
+        return CompletionResponse(
+            content=content_text,
+            model=self._model,
+            provider=self.name,
+            tokens_used=tokens_used,
+            cached_tokens=cache_read_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+        )

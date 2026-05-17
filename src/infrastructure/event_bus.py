@@ -20,6 +20,7 @@ TOPIC_COORDINATION_STARTED = "coordination.started"
 TOPIC_COORDINATION_COMPLETE = "coordination.complete"
 TOPIC_WORKFLOW_STARTED = "workflow.started"
 TOPIC_WORKFLOW_COMPLETE = "workflow.complete"
+TOPIC_MEMORY_STORED = "memory.stored"
 
 
 class RuntimeEvent(BaseModel):

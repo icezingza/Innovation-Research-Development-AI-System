@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from src.agents.critique_agent import CritiqueAgent
+from src.agents.futurist_agent import FuturistAgent
 from src.agents.hypothesis_agent import HypothesisAgent
 from src.agents.memory_agent import MemoryAgent
 from src.agents.research_agent import ResearchAgent
@@ -23,6 +24,7 @@ from src.memory.postgres_memory_store import PostgresMemoryStore
 from src.memory.qdrant_connector import QdrantMemoryConnector
 from src.memory.redis_runtime_store import RedisRuntimeStore
 from src.memory.research_memory import ResearchMemory
+from src.memory.state_reconciler import MemoryStateReconciler
 from src.orchestration.agent_coordinator import AgentCoordinator, CoordinatorConfig
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.orchestration.debate_runtime import DebateRuntime
@@ -125,6 +127,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if pg_ok:
         engine = create_async_engine(settings.postgres_url, echo=False)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    else:
+        # Fallback to local SQLite for heuristic development/simulation mode
+        sqlite_url = "sqlite+aiosqlite:///cognition_dev.db"
+        logger.warning(f"postgres_unavailable_falling_back_to_sqlite: {sqlite_url}")
+        engine = create_async_engine(sqlite_url, echo=False)
+        from src.memory.schema import Base
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     # --- quota + rate limiter services ---
     quota_service = QuotaService(redis_client=redis_store.client) if redis_ok else None
@@ -172,13 +184,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     research_memory = ResearchMemory(
         context_engine=context_engine,
         session_factory=session_factory,
+        event_bus=event_bus,
     )
     MemoryAgent(research_memory=research_memory).register(event_bus)
 
+    # --- state reconciler ---
+    state_reconciler = MemoryStateReconciler(
+        session_factory=session_factory,
+        context_engine=context_engine,
+        knowledge_graph=knowledge_graph,
+        event_bus=event_bus,
+    )
+    await state_reconciler.start(interval_seconds=30.0)
+
     # --- specialized agents ---
     _inf = inference_router if inference_router.enabled else None
-    hypothesis_agents = [HypothesisAgent(inference_router=_inf, event_bus=event_bus)]
-    critique_agents = [CritiqueAgent(inference_router=_inf, event_bus=event_bus)]
+    hypothesis_agents = [
+        HypothesisAgent(inference_router=_inf, event_bus=event_bus) for _ in range(3)
+    ]
+    critique_agents = [
+        CritiqueAgent(inference_router=_inf, event_bus=event_bus) for _ in range(3)
+    ]
     synthesis_agent = SynthesisAgent(inference_router=_inf, event_bus=event_bus)
 
     coordinator = AgentCoordinator(
@@ -193,7 +219,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # --- cognitive pipeline ---
     agent = ResearchAgent(inference_router=_inf, context_engine=context_engine)
-    pipeline = CognitivePipeline(agents=[agent], policy_enforcer=policy_enforcer)
+    futurist_agent = FuturistAgent(inference_router=_inf, event_bus=event_bus)
+    pipeline = CognitivePipeline(
+        agents=[agent, futurist_agent], policy_enforcer=policy_enforcer
+    )
     research_workflow = ResearchWorkflow(
         pipeline=pipeline,
         debate_runtime=debate_runtime,
@@ -216,6 +245,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         redis_client=redis_store.client if redis_ok else None
     )
     agent_spawner = AgentSpawner(event_bus=event_bus, inference_router=_inf)
+
+    # --- Swarm A/B Testing & Feedback Loops ---
+    from src.infrastructure.feedback_loop import (
+        ABTestingManager,
+        FeedbackCollector,
+        FeedbackAggregator,
+    )
+
+    ab_testing = ABTestingManager(redis_client=redis_store.client if redis_ok else None)
+    feedback_collector = FeedbackCollector(
+        redis_client=redis_store.client if redis_ok else None
+    )
+    feedback_aggregator = FeedbackAggregator(
+        redis_client=redis_store.client if redis_ok else None
+    )
 
     # --- start worker pool ---
     await worker_pool.start()
@@ -249,6 +293,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.research_agenda = research_agenda
     app.state.session_manager = session_manager
     app.state.agent_spawner = agent_spawner
+    app.state.state_reconciler = state_reconciler
+    app.state.ab_testing = ab_testing
+    app.state.feedback_collector = feedback_collector
+    app.state.feedback_aggregator = feedback_aggregator
 
     if errors:
         logger.warning("runtime_started_degraded", extra={"unavailable": list(errors)})
@@ -258,9 +306,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     # --- shutdown ---
+    if (
+        hasattr(app.state, "state_reconciler")
+        and app.state.state_reconciler is not None
+    ):
+        await app.state.state_reconciler.stop()
     await worker_pool.stop()
     scheduler.stop()
     await redis_store.close()
+    await inference_router.close()
+    await embedding_provider.close()
     await neo4j.close()
     await postgres_store.dispose()
     if engine is not None:

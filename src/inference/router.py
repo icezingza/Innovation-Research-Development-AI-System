@@ -41,6 +41,11 @@ class InferenceRouter:
     def active_provider(self) -> str:
         return self._providers[0].name if self._providers else "none"
 
+    async def close(self) -> None:
+        """Close provider-owned resources such as pooled HTTP clients."""
+        for provider in self._providers:
+            await provider.close()
+
     def _get_providers_by_tier(
         self, tier: Literal["fast", "deep"]
     ) -> list[BaseInferenceProvider]:

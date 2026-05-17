@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.tenants.context import SYSTEM_TENANT_ID
+
 logger = logging.getLogger(__name__)
 
 _MEMORY_COLLECTION = "research_memory"
@@ -21,6 +23,7 @@ class MemoryEntry(BaseModel):
     evidence: list[str] = Field(default_factory=list)
     generation: int = 0
     created_at: float = Field(default_factory=time.time)
+    tenant_id: str = SYSTEM_TENANT_ID
 
 
 class ResearchMemory:
@@ -39,9 +42,11 @@ class ResearchMemory:
         self,
         context_engine: Any | None = None,
         session_factory: Any | None = None,
+        event_bus: Any | None = None,
     ) -> None:
         self._context = context_engine
         self._session_factory = session_factory
+        self._event_bus = event_bus
         self._buffer: list[MemoryEntry] = []
 
     async def store(self, entry: MemoryEntry) -> None:
@@ -50,13 +55,13 @@ class ResearchMemory:
         if len(self._buffer) > _IN_MEMORY_MAX:
             self._buffer = self._buffer[-_IN_MEMORY_MAX:]
 
-        # PostgreSQL persistence
+        # PostgreSQL persistence with Outbox
         if self._session_factory is not None:
             await self._store_postgres(entry)
-
-        # Qdrant semantic storage
-        if self._context is not None:
-            await self._store_qdrant(entry)
+        else:
+            # Fallback to direct synchronous/async sync to Qdrant (for tests or heuristic environments with no DB)
+            if self._context is not None:
+                await self._store_qdrant(entry)
 
         logger.info(
             "research_memory_stored",
@@ -129,12 +134,13 @@ class ResearchMemory:
         }
 
     async def _store_postgres(self, entry: MemoryEntry) -> None:
-        from src.memory.schema import HypothesisRecord
+        from src.memory.schema import HypothesisRecord, MemoryOutboxRecord
 
         try:
             async with self._session_factory() as session:
                 record = HypothesisRecord(
                     id=entry.entry_id,
+                    tenant_id=entry.tenant_id,
                     statement=entry.statement,
                     confidence=entry.confidence,
                     topic=entry.topic,
@@ -144,10 +150,51 @@ class ResearchMemory:
                     generation=entry.generation,
                 )
                 session.add(record)
+
+                outbox = MemoryOutboxRecord(
+                    entry_id=entry.entry_id,
+                    tenant_id=entry.tenant_id,
+                    statement=entry.statement,
+                    confidence=entry.confidence,
+                    topic=entry.topic,
+                    source=entry.source,
+                    session_id=entry.session_id,
+                    evidence=entry.evidence,
+                    generation=entry.generation,
+                    status="pending",
+                    retry_count=0,
+                )
+                session.add(outbox)
                 await session.commit()
+
+                # Trigger eventual consistency notification via Event Bus if available
+                if self._event_bus is not None:
+                    from src.infrastructure.event_bus import (
+                        RuntimeEvent,
+                        TOPIC_MEMORY_STORED,
+                    )
+
+                    event = RuntimeEvent(
+                        topic=TOPIC_MEMORY_STORED,
+                        source_agent_id="research_memory",
+                        payload={
+                            "entry_id": entry.entry_id,
+                            "tenant_id": entry.tenant_id,
+                            "topic": entry.topic,
+                            "statement": entry.statement,
+                        },
+                    )
+                    await self._event_bus.publish(event)
+                    logger.debug(
+                        "memory_stored_event_published",
+                        extra={"entry_id": entry.entry_id},
+                    )
+
         except Exception as exc:
-            logger.warning(
-                "research_memory_postgres_write_failed", extra={"error": str(exc)}
+            logger.error(
+                "research_memory_postgres_write_failed",
+                extra={"error": str(exc)},
+                exc_info=True,
             )
 
     async def _store_qdrant(self, entry: MemoryEntry) -> None:

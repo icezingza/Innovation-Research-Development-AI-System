@@ -4,6 +4,7 @@ Approach B (manual timing): we use `time.perf_counter()` inside async tests
 to avoid pytest-benchmark vs pytest-asyncio session-scoped event loop
 conflicts. Stats are printed via `print()` (run with -s to view).
 """
+
 from __future__ import annotations
 
 import statistics
@@ -19,8 +20,7 @@ def _summarize(name: str, samples: list[float]) -> tuple[float, float, float]:
     lo = min(samples)
     hi = max(samples)
     print(
-        f"\n[perf:{name}] n={len(samples)} "
-        f"mean={mean:.6f}s min={lo:.6f}s max={hi:.6f}s"
+        f"\n[perf:{name}] n={len(samples)} mean={mean:.6f}s min={lo:.6f}s max={hi:.6f}s"
     )
     return mean, lo, hi
 
@@ -41,7 +41,7 @@ async def test_health_latency(api_client) -> None:
     mean, _, hi = _summarize("health", samples)
     assert hi < 0.2, f"/health hard-fail: max {hi:.3f}s exceeds 200ms"
     if mean >= 0.05:
-        print(f"[perf:health] WARNING: mean {mean*1000:.1f}ms exceeds 50ms target")
+        print(f"[perf:health] WARNING: mean {mean * 1000:.1f}ms exceeds 50ms target")
 
 
 @pytest.mark.integration
@@ -88,6 +88,8 @@ async def test_event_bus_throughput() -> None:
         samples.append(time.perf_counter() - t0)
 
     mean, _, _ = _summarize("event_bus_1000", samples)
-    assert mean < 5.0, f"event bus hard-fail: mean {mean:.3f}s exceeds 5s for 1000 events"
+    assert mean < 5.0, (
+        f"event bus hard-fail: mean {mean:.3f}s exceeds 5s for 1000 events"
+    )
     if mean >= 1.0:
         print(f"[perf:event_bus] WARNING: mean {mean:.3f}s exceeds 1s target")

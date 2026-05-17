@@ -47,9 +47,9 @@
                 </div>
 
                 <div class="card">
-                    <h2>Estimated Cost</h2>
+                    <h2>Estimated Cost (Inc. HW)</h2>
                     <div class="value">$<span id="estimated-cost">-</span></div>
-                    <div class="unit">this billing period</div>
+                    <div class="unit">API usage + $<span id="hw-depreciation">0</span> HW depreciation</div>
                 </div>
 
                 <div class="card" id="depletion-card">
@@ -93,7 +93,13 @@
             // Fill in the data
             document.getElementById('quota-used').textContent = data.quota_used.toLocaleString();
             document.getElementById('quota-limit').textContent = data.quota_limit.toLocaleString();
-            document.getElementById('estimated-cost').textContent = data.estimated_cost.toFixed(2);
+            
+            const totalCost = data.estimated_cost + (data.edge_hardware_depreciation || 0);
+            document.getElementById('estimated-cost').textContent = totalCost.toFixed(2);
+            if (data.edge_hardware_depreciation !== undefined && data.edge_hardware_depreciation !== null) {
+                document.getElementById('hw-depreciation').textContent = data.edge_hardware_depreciation.toFixed(2);
+            }
+            
             document.getElementById('billing-period').textContent = data.current_billing_period;
             document.getElementById('updated-at').textContent = new Date().toLocaleString();
 

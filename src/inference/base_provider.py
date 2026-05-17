@@ -66,3 +66,7 @@ class BaseInferenceProvider(ABC):
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
         """Execute inference request and return completion."""
         ...
+
+    async def close(self) -> None:
+        """Release provider-owned async resources, if any."""
+        return None

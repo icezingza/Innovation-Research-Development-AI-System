@@ -4,6 +4,7 @@ Exercises every public route with a minimal valid payload and asserts
 status code + presence of required response fields. No 5xx is acceptable
 on valid input. Empty/invalid input must yield a 4xx (never 5xx).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -60,15 +61,6 @@ async def test_runtime_state(api_client):
 # ---------------------------------------------------------------------------
 @pytest.mark.integration
 @pytest.mark.asyncio(loop_scope="session")
-@pytest.mark.xfail(
-    reason=(
-        "FINDING: POST /research/tasks returns 500 (ForeignKeyViolation) when "
-        "SYSTEM_TENANT_ID is not seeded in the `tenants` table. The route "
-        "assumes the system tenant row exists. Needs either a startup-time "
-        "tenant seed or graceful handling when tenant_id FK is unsatisfied."
-    ),
-    strict=False,
-)
 async def test_research_create_task(api_client):
     r = await api_client.post(
         "/research/tasks",
@@ -96,15 +88,6 @@ async def test_research_get_task_not_found(api_client):
 # ---------------------------------------------------------------------------
 @pytest.mark.integration
 @pytest.mark.asyncio(loop_scope="session")
-@pytest.mark.xfail(
-    reason=(
-        "FINDING: POST /research/workflows returns 500 (ForeignKeyViolation) "
-        "because SYSTEM_TENANT_ID is not seeded in the `tenants` table. Same "
-        "root cause as test_research_create_task. Route should either seed the "
-        "system tenant on startup or accept unbound tenants when RLS is off."
-    ),
-    strict=False,
-)
 async def test_workflows_create(api_client):
     r = await api_client.post(
         "/research/workflows",

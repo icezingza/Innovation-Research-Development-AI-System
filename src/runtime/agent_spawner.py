@@ -10,13 +10,14 @@ import uuid
 from typing import Any
 
 from src.agents.critique_agent import CritiqueAgent
+from src.agents.futurist_agent import FuturistAgent
 from src.agents.hypothesis_agent import HypothesisAgent
 from src.agents.synthesis_agent import SynthesisAgent
 from src.infrastructure.event_bus import RuntimeEventBus
 
 logger = logging.getLogger(__name__)
 
-_KNOWN_AGENT_TYPES = {"hypothesis", "critique", "synthesis"}
+_KNOWN_AGENT_TYPES = {"hypothesis", "critique", "synthesis", "futurist"}
 
 
 class SpawnRecord:
@@ -46,7 +47,7 @@ class AgentSpawner:
     def spawn(self, agent_type: str, **kwargs: Any) -> SpawnRecord:
         """Instantiate a new agent of the given type and register it.
 
-        Supported types: 'hypothesis', 'critique', 'synthesis'.
+        Supported types: 'hypothesis', 'critique', 'synthesis', 'futurist'.
         """
         if agent_type not in _KNOWN_AGENT_TYPES:
             raise ValueError(
@@ -64,6 +65,12 @@ class AgentSpawner:
             )
         elif agent_type == "critique":
             agent = CritiqueAgent(
+                inference_router=_inf,
+                event_bus=self._event_bus,
+                **kwargs,
+            )
+        elif agent_type == "futurist":
+            agent = FuturistAgent(
                 inference_router=_inf,
                 event_bus=self._event_bus,
                 **kwargs,

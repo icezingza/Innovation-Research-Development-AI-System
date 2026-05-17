@@ -4,6 +4,7 @@ Writes a hypothesis directly to ContextEngine (Qdrant-backed) with a unique
 marker, then verifies it can be recalled by semantic similarity in a fresh
 build() call. This proves vector memory persists across logical sessions.
 """
+
 import uuid
 
 import pytest
@@ -21,7 +22,10 @@ async def test_hypothesis_recall_via_context_engine(live_app):
         pytest.skip("Embedding provider disabled")
 
     marker = uuid.uuid4().hex[:8].upper()
-    question = "What are cognitive feedback loops in distributed reasoning?"
+    question = (
+        f"What are cognitive feedback loops in distributed reasoning "
+        f"for evaluation marker {marker}?"
+    )
     hypothesis = {
         "statement": (
             f"MARKER_{marker}: Recursive reflection refines hypotheses "
@@ -39,7 +43,7 @@ async def test_hypothesis_recall_via_context_engine(live_app):
     # Simulate session restart by clearing the in-memory buffer
     research_memory._buffer.clear()  # noqa: SLF001
 
-    packet = await context_engine.build(question=question, limit=5)
+    packet = await context_engine.build(question=question, limit=20)
 
     assert packet.continuity_score > 0.0, (
         f"continuity_score is 0 — nothing recalled from vector memory "

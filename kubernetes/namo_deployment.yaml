@@ -1,0 +1,203 @@
+# =====================================================================
+# NRE v5.0.0 Sovereign Edition — Production Kubernetes Deployment Spec
+# Optimized for Lenovo Edge + Google Cloud Platform (Hybrid Architecture)
+# =====================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: namo-ai
+  namespace: production
+  labels:
+    app: namo-ai
+    version: v5.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: namo-ai
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: namo-ai
+        version: v5.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: namo-ai
+        image: gcr.io/your-project/namo-ai:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENV
+          value: "production"
+        - name: PORT
+          value: "8000"
+        - name: REDIS_URL
+          value: "redis://redis-service:6379"
+        - name: QDRANT_HOST
+          value: "qdrant-service"
+        - name: NEO4J_URI
+          value: "bolt://neo4j-service:7687"
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: namo-secrets
+              key: anthropic-api-key
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: namo-secrets
+              key: postgres-password
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        # Liveness probe verifies if container is still running correctly
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe assesses if Pod is fully operational to receive actual traffic
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+          claimName: namo-logs-pvc
+---
+# =====================================================================
+# Service Configuration
+# =====================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: namo-ai-service
+  namespace: production
+  labels:
+    app: namo-ai
+spec:
+  type: LoadBalancer
+  selector:
+    app: namo-ai
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+    name: http
+  sessionAffinity: ClientIP
+---
+# =====================================================================
+# Horizontal Pod Autoscaler (HPA v2)
+# =====================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: namo-ai-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: namo-ai
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+---
+# =====================================================================
+# ConfigMap for Dynamic Settings
+# =====================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namo-config
+  namespace: production
+data:
+  MAX_WORKERS: "4"
+  CACHE_TTL: "3600"
+  LOG_LEVEL: "INFO"
+  RATE_LIMIT: "100"
+---
+# =====================================================================
+# Secret Configuration Template (Opaque credentials)
+# =====================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: namo-secrets
+  namespace: production
+type: Opaque
+data:
+  anthropic-api-key: dGVzdC1rZXk= # placeholder base64
+  postgres-password: dGVzdC1wYXNzd29yZA== # placeholder base64
+---
+# =====================================================================
+# Persistent Volume Claim (PVC) for Logs
+# =====================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: namo-logs-pvc
+  namespace: production
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard

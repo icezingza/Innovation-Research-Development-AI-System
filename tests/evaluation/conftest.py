@@ -4,6 +4,7 @@ All evaluation tests require live Docker Compose services
 (redis, postgres, qdrant, neo4j). The `require_services` fixture
 probes each service and skips the test session if any are down.
 """
+
 import os
 import socket
 from typing import AsyncIterator
@@ -35,8 +36,7 @@ def _probe_port(host: str, port: int, timeout: float = 1.0) -> bool:
 def require_services() -> dict[str, bool]:
     """Skip the test if any required Docker service is unreachable."""
     results = {
-        name: _probe_port(host, port)
-        for name, (host, port) in _SERVICE_PORTS.items()
+        name: _probe_port(host, port) for name, (host, port) in _SERVICE_PORTS.items()
     }
     missing = [name for name, ok in results.items() if not ok]
     if missing:
@@ -50,7 +50,9 @@ def require_services() -> dict[str, bool]:
 @pytest_asyncio.fixture(scope="session")
 async def live_app(require_services):
     """Construct the FastAPI app with its real lifespan against live services."""
-    os.environ.setdefault("POSTGRES_URL", "postgresql+asyncpg://cognitive:cognitive@localhost/cognition")
+    os.environ.setdefault(
+        "POSTGRES_URL", "postgresql+asyncpg://cognitive:cognitive@localhost/cognition"
+    )
     os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
     os.environ.setdefault("QDRANT_HOST", "localhost")
     os.environ.setdefault("QDRANT_PORT", "6333")

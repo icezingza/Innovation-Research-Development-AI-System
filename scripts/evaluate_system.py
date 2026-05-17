@@ -7,6 +7,7 @@ Runs the 4-dimension pytest evaluation suite and produces:
 Usage:
     python scripts/evaluate_system.py
 """
+
 from __future__ import annotations
 
 import json
@@ -54,13 +55,14 @@ def git_sha() -> str:
 def run_pytest(target: str) -> dict:
     """Run a single evaluation file and return parsed pytest output."""
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         target,
         "-v",
         "-s",
         "--json-report",
         f"--json-report-file={PYTEST_JSON}",
-        "--benchmark-disable",
     ]
     proc = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     if PYTEST_JSON.exists():
@@ -73,6 +75,7 @@ def run_pytest(target: str) -> dict:
         "passed": proc.returncode == 0,
         "summary": data.get("summary", {}),
         "stdout_tail": proc.stdout[-2000:],
+        "stderr_tail": proc.stderr[-2000:],
     }
 
 
@@ -103,13 +106,13 @@ th {{ background: #f5f5f5; }}
 </style></head>
 <body>
 <h1>Full System Evaluation Report</h1>
-<p><strong>Timestamp:</strong> {report['timestamp']}</p>
-<p><strong>Git SHA:</strong> {report['git_sha']}</p>
+<p><strong>Timestamp:</strong> {report["timestamp"]}</p>
+<p><strong>Git SHA:</strong> {report["git_sha"]}</p>
 <p><strong>Services:</strong> {services_html}</p>
-<div class='overall'>Overall: <strong>{report['overall']}</strong></div>
+<div class='overall'>Overall: <strong>{report["overall"]}</strong></div>
 <table>
 <thead><tr><th>Dimension</th><th>Status</th><th>Tests</th></tr></thead>
-<tbody>{''.join(rows)}</tbody>
+<tbody>{"".join(rows)}</tbody>
 </table>
 </body></html>"""
 

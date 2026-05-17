@@ -69,6 +69,7 @@ class FinOpsResponse(BaseModel):
     estimated_cost: float
     budget_depletion_forecast: str | None
     recommendation: str
+    edge_hardware_depreciation: float | None = None
 
 
 class ROIResponse(BaseModel):
@@ -77,6 +78,8 @@ class ROIResponse(BaseModel):
     hours_saved: int
     token_cost_cloud_equivalent: float
     actual_token_cost: float
+    edge_hardware_depreciation_cost: float
+    total_on_premise_cost: float
     savings_percentage: float
     tasks_completed: int
     avg_time_per_task_seconds: float
@@ -240,6 +243,7 @@ async def get_tenant_finops(
     # Cost estimation: $0.01 per API call (configurable)
     cost_per_unit = 0.01
     estimated_cost = round(used * cost_per_unit, 2)
+    edge_hardware_depreciation = 100.0  # Assumed flat rate monthly allocation
 
     # Budget depletion forecast using linear extrapolation
     now = datetime.now(UTC)
@@ -252,6 +256,8 @@ async def get_tenant_finops(
     if daily_avg > 0 and used < limit:
         remaining = limit - used
         days_left = remaining / daily_avg
+        # Cap days_left at 3650 days (10 years) to prevent python datetime OverflowError
+        days_left = min(days_left, 3650.0)
         depletion_time = now + timedelta(days=days_left)
 
     # Generate recommendation based on usage
@@ -271,6 +277,7 @@ async def get_tenant_finops(
         if depletion_time
         else None,
         "recommendation": recommendation,
+        "edge_hardware_depreciation": edge_hardware_depreciation,
     }
 
 
@@ -312,6 +319,9 @@ async def get_tenant_roi(
     CLOUD_COST_PER_1K_TOKENS = 0.03
     AVG_TOKENS_PER_TASK = 4000
     COST_PER_API_CALL = 0.01
+    EDGE_DEPRECIATION_COST = (
+        100.0  # Fixed monthly edge hardware depreciation per tenant
+    )
 
     # --- คำนวณ ROI ---
     hours_saved = task_count * AVG_HUMAN_HOURS_PER_TASK
@@ -319,9 +329,10 @@ async def get_tenant_roi(
         api_calls_used * AVG_TOKENS_PER_TASK / 1000
     ) * CLOUD_COST_PER_1K_TOKENS
     actual_cost = api_calls_used * COST_PER_API_CALL
+    total_on_premise_cost = actual_cost + EDGE_DEPRECIATION_COST
 
     savings_percentage = (
-        round(((cloud_cost - actual_cost) / cloud_cost) * 100, 2)
+        round(((cloud_cost - total_on_premise_cost) / cloud_cost) * 100, 2)
         if cloud_cost > 0
         else 0.0
     )
@@ -334,6 +345,8 @@ async def get_tenant_roi(
         "hours_saved": hours_saved,
         "token_cost_cloud_equivalent": round(cloud_cost, 2),
         "actual_token_cost": round(actual_cost, 2),
+        "edge_hardware_depreciation_cost": EDGE_DEPRECIATION_COST,
+        "total_on_premise_cost": round(total_on_premise_cost, 2),
         "savings_percentage": savings_percentage,
         "avg_time_per_task_seconds": 45.0,
         "recommendation": (
