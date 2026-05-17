@@ -53,14 +53,14 @@ def git_sha() -> str:
 
 def run_pytest(target: str) -> dict:
     """Run a single evaluation file and return parsed pytest output."""
-    is_perf = "performance" in target
     cmd = [
         sys.executable, "-m", "pytest",
         target,
         "-v",
+        "-s",
         "--json-report",
         f"--json-report-file={PYTEST_JSON}",
-        "--benchmark-only" if is_perf else "--benchmark-disable",
+        "--benchmark-disable",
     ]
     proc = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     if PYTEST_JSON.exists():
