@@ -13,7 +13,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -34,7 +34,7 @@ class ResearchTask(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        PGUUID(as_uuid=False), ForeignKey("tenants.id"), nullable=False
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     question: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
@@ -59,7 +59,7 @@ class WorkflowRecord(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        PGUUID(as_uuid=False), ForeignKey("tenants.id"), nullable=False
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     goal: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
@@ -83,7 +83,7 @@ class HypothesisRecord(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        PGUUID(as_uuid=False), ForeignKey("tenants.id"), nullable=False
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     statement: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
@@ -106,7 +106,7 @@ class ReasoningTraceRecord(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        PGUUID(as_uuid=False), ForeignKey("tenants.id"), nullable=False
+        String(36), ForeignKey("tenants.id"), nullable=False
     )
     operation: Mapped[str] = mapped_column(String(100), nullable=False)
     input_hash: Mapped[str] = mapped_column(String(16), nullable=False)
