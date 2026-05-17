@@ -14,11 +14,9 @@ from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
 
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
-
-class Base(DeclarativeBase):
-    pass
+from src.memory.base import Base
 
 
 # Tenant and User are imported here AFTER Base is defined to avoid circular

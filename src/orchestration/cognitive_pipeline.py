@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 class CognitivePipeline:
     """Coordinates agent execution through a governed async pipeline."""
 
-    def __init__(
-        self, agents: Any = None, policy_enforcer: PolicyEnforcer = None
-    ):
+    def __init__(self, agents: Any = None, policy_enforcer: PolicyEnforcer = None):
         if isinstance(agents, list):
             self.agents_list = agents
             self.agents = {}
@@ -27,18 +25,20 @@ class CognitivePipeline:
                     self.agents[str(agent)] = agent
         else:
             self.agents = agents or {}
-            self.agents_list = list(self.agents.values()) if isinstance(self.agents, dict) else []
+            self.agents_list = (
+                list(self.agents.values()) if isinstance(self.agents, dict) else []
+            )
 
         self.policy_enforcer = policy_enforcer or PolicyEnforcer()
 
     async def run(self, context: Dict[str, Any]) -> list[AgentMessage]:
         """รันกระบวนการของเอเจนต์ทั้งหมดใน Pipeline และคืนค่าเป็นรายการของ AgentMessage"""
         messages = []
-        
+
         # 1. รันระบบ 5 สเตจดั้งเดิมผ่าน process() พร้อมผ่าน governance check
         # (ซึ่งจะเก็บข้อมูลผลลัพธ์ลงใน context)
         await self.process(context)
-        
+
         # 2. รันและรวบรวมคำตอบ (AgentMessage) จากเอเจนต์ทั้งหมด
         for agent in self.agents_list:
             if hasattr(agent, "run"):
@@ -51,7 +51,7 @@ class CognitivePipeline:
                             AgentMessage(
                                 sender_id=getattr(agent, "agent_id", "agent"),
                                 content=response.content,
-                                message_type=MessageType.ACTION
+                                message_type=MessageType.ACTION,
                             )
                         )
                     else:
@@ -59,12 +59,14 @@ class CognitivePipeline:
                             AgentMessage(
                                 sender_id=getattr(agent, "agent_id", "agent"),
                                 content=str(response),
-                                message_type=MessageType.ACTION
+                                message_type=MessageType.ACTION,
                             )
                         )
                 except Exception as e:
-                    logger.error(f"Error running agent {getattr(agent, 'agent_id', 'unknown')}: {e}")
-                    
+                    logger.error(
+                        f"Error running agent {getattr(agent, 'agent_id', 'unknown')}: {e}"
+                    )
+
         return messages
 
     async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:

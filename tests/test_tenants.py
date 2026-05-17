@@ -190,6 +190,7 @@ class TestTenantRepositoryCreate:
     async def test_create_tenant_basic(self) -> None:
         """Create a tenant via repository."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -206,6 +207,7 @@ class TestTenantRepositoryCreate:
     async def test_create_tenant_sets_values_correctly(self) -> None:
         """Created tenant has correct values."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -217,6 +219,7 @@ class TestTenantRepositoryCreate:
     async def test_create_multiple_tenants(self) -> None:
         """Create multiple tenants."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -231,6 +234,7 @@ class TestTenantRepositoryCreate:
     async def test_create_user_basic(self) -> None:
         """Create a user via repository."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -252,6 +256,7 @@ class TestTenantRepositoryCreate:
     async def test_create_user_sets_values_correctly(self) -> None:
         """Created user has correct values."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -268,6 +273,7 @@ class TestTenantRepositoryCreate:
     async def test_add_member_basic(self) -> None:
         """Add a user as a member to a tenant."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -285,6 +291,7 @@ class TestTenantRepositoryCreate:
     async def test_add_member_default_role(self) -> None:
         """Add a member with default role."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -295,6 +302,7 @@ class TestTenantRepositoryCreate:
     async def test_add_member_multiple_roles(self) -> None:
         """Add members with different roles."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -490,6 +498,7 @@ class TestTenantRepositoryEdgeCases:
     async def test_create_tenant_with_special_characters_in_name(self) -> None:
         """Create tenant with special characters in name."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -500,6 +509,7 @@ class TestTenantRepositoryEdgeCases:
     async def test_create_user_with_long_email(self) -> None:
         """Create user with a very long email."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
@@ -524,6 +534,7 @@ class TestTenantRepositoryEdgeCases:
     async def test_create_operations_call_flush(self) -> None:
         """Create operations call session.flush after adding."""
         session = AsyncMock()
+        session.add = MagicMock()
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
