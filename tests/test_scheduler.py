@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.runtime.scheduler import AsyncScheduler, TaskPriority
@@ -62,9 +61,7 @@ async def test_scheduler_execute_next_empty_returns_false():
 async def test_scheduler_cancel_skips_task():
     s = AsyncScheduler()
     results: list[str] = []
-    task_id = s.submit(
-        _record, results, "should_not_run", priority=TaskPriority.NORMAL
-    )
+    task_id = s.submit(_record, results, "should_not_run", priority=TaskPriority.NORMAL)
     s.cancel(task_id)
     await s.execute_next()
     assert results == []

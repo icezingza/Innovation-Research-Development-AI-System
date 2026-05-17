@@ -42,9 +42,7 @@ class RateLimiter:
             window.popleft()
 
         if len(window) >= self._limit:
-            logger.warning(
-                "rate_limit_exceeded", extra={"client_id": client_id[:40]}
-            )
+            logger.warning("rate_limit_exceeded", extra={"client_id": client_id[:40]})
             return False
 
         window.append(now)

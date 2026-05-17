@@ -1,9 +1,9 @@
-
 from src.security.api_keys import APIKeyManager
 from src.security.rate_limiter import RateLimiter
 
 
 # ---------- APIKeyManager ----------
+
 
 def test_api_key_manager_disabled_when_empty():
     mgr = APIKeyManager(raw_keys="")
@@ -43,6 +43,7 @@ def test_api_key_generate_produces_unique_keys():
 
 
 # ---------- RateLimiter ----------
+
 
 def test_rate_limiter_disabled_always_allows():
     rl = RateLimiter(requests_per_minute=1, enabled=False)

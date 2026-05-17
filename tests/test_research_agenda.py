@@ -43,9 +43,7 @@ class TestResearchAgenda:
 
     @pytest.mark.asyncio
     async def test_low_confidence_topic_flagged(self) -> None:
-        entries = [
-            _make_entry("quantum", 0.3) for _ in range(5)
-        ]
+        entries = [_make_entry("quantum", 0.3) for _ in range(5)]
         agenda = ResearchAgenda(MockResearchMemory(entries))  # type: ignore[arg-type]
         report = await agenda.analyze()
         assert any(i.topic == "quantum" for i in report.items)

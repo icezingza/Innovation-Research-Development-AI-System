@@ -1,4 +1,5 @@
 """Tests for AgentCoordinator multi-agent orchestration."""
+
 import pytest
 
 from src.agents.critique_agent import CritiqueAgent
@@ -38,7 +39,9 @@ def _make_coordinator(
 @pytest.mark.asyncio
 async def test_coordinator_returns_coordinated_result():
     coordinator, _ = _make_coordinator()
-    result = await coordinator.coordinate("How does exercise affect cognitive function?")
+    result = await coordinator.coordinate(
+        "How does exercise affect cognitive function?"
+    )
     assert isinstance(result, CoordinatedResult)
     assert result.goal == "How does exercise affect cognitive function?"
     assert result.duration_seconds > 0

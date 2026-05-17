@@ -2,6 +2,7 @@ import asyncio
 import os
 import httpx
 
+
 async def list_models():
     if os.path.exists(".env"):
         with open(".env", "r") as f:
@@ -22,9 +23,12 @@ async def list_models():
             models = response.json()
             print("Available models:")
             for m in models.get("models", []):
-                print(f"- {m['name']} (supported methods: {m.get('supportedGenerationMethods')})")
+                print(
+                    f"- {m['name']} (supported methods: {m.get('supportedGenerationMethods')})"
+                )
         else:
             print(f"Error {response.status_code}: {response.text}")
+
 
 if __name__ == "__main__":
     asyncio.run(list_models())

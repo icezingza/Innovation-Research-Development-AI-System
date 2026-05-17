@@ -4,6 +4,7 @@ Uses XADD for publishing and XREADGROUP for consumer-group delivery,
 enabling distributed workers across multiple processes or hosts.
 Falls back gracefully when Redis is unavailable.
 """
+
 import asyncio
 import json
 import logging

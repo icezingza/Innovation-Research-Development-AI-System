@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, UTC
 
 from src.tenants.context import TenantContext, SYSTEM_TENANT_ID
@@ -154,9 +154,7 @@ class TestTenantMemberModelInstantiation:
 
     def test_tenant_member_creation_owner(self) -> None:
         """Create a TenantMember with owner role."""
-        m = TenantMember(
-            id="m1", tenant_id="t1", user_id="u1", role="owner"
-        )
+        m = TenantMember(id="m1", tenant_id="t1", user_id="u1", role="owner")
         assert m.id == "m1"
         assert m.tenant_id == "t1"
         assert m.user_id == "u1"
@@ -164,16 +162,12 @@ class TestTenantMemberModelInstantiation:
 
     def test_tenant_member_creation_admin(self) -> None:
         """Create a TenantMember with admin role."""
-        m = TenantMember(
-            id="m2", tenant_id="t1", user_id="u2", role="admin"
-        )
+        m = TenantMember(id="m2", tenant_id="t1", user_id="u2", role="admin")
         assert m.role == "admin"
 
     def test_tenant_member_creation_member(self) -> None:
         """Create a TenantMember with member role."""
-        m = TenantMember(
-            id="m3", tenant_id="t1", user_id="u3", role="member"
-        )
+        m = TenantMember(id="m3", tenant_id="t1", user_id="u3", role="member")
         assert m.role == "member"
 
     def test_tenant_member_with_explicit_role(self) -> None:
@@ -183,9 +177,7 @@ class TestTenantMemberModelInstantiation:
 
     def test_tenant_member_relationships(self) -> None:
         """TenantMember has tenant and user relationships."""
-        m = TenantMember(
-            id="m6", tenant_id="t1", user_id="u1", role="owner"
-        )
+        m = TenantMember(id="m6", tenant_id="t1", user_id="u1", role="owner")
         # Relationships are lazy-loaded; check they exist
         assert hasattr(m, "tenant")
         assert hasattr(m, "user")
@@ -201,9 +193,7 @@ class TestTenantRepositoryCreate:
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
-        tenant = await repo.create_tenant(
-            name="Test Organization", slug="test-org"
-        )
+        tenant = await repo.create_tenant(name="Test Organization", slug="test-org")
 
         assert tenant.name == "Test Organization"
         assert tenant.slug == "test-org"
@@ -219,9 +209,7 @@ class TestTenantRepositoryCreate:
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
-        tenant = await repo.create_tenant(
-            name="Active Org", slug="active-org"
-        )
+        tenant = await repo.create_tenant(name="Active Org", slug="active-org")
 
         assert tenant.name == "Active Org"
         assert tenant.slug == "active-org"
@@ -283,9 +271,7 @@ class TestTenantRepositoryCreate:
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
-        member = await repo.add_member(
-            tenant_id="t1", user_id="u1", role="owner"
-        )
+        member = await repo.add_member(tenant_id="t1", user_id="u1", role="owner")
 
         assert member.tenant_id == "t1"
         assert member.user_id == "u1"
@@ -312,15 +298,9 @@ class TestTenantRepositoryCreate:
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
-        m1 = await repo.add_member(
-            tenant_id="t1", user_id="u1", role="owner"
-        )
-        m2 = await repo.add_member(
-            tenant_id="t1", user_id="u2", role="admin"
-        )
-        m3 = await repo.add_member(
-            tenant_id="t1", user_id="u3", role="member"
-        )
+        m1 = await repo.add_member(tenant_id="t1", user_id="u1", role="owner")
+        m2 = await repo.add_member(tenant_id="t1", user_id="u2", role="admin")
+        m3 = await repo.add_member(tenant_id="t1", user_id="u3", role="member")
 
         assert m1.role == "owner"
         assert m2.role == "admin"
@@ -513,9 +493,7 @@ class TestTenantRepositoryEdgeCases:
         session.flush = AsyncMock()
         repo = TenantRepository(session)
 
-        tenant = await repo.create_tenant(
-            name="Org & Co. (Ltd.)", slug="org-and-co"
-        )
+        tenant = await repo.create_tenant(name="Org & Co. (Ltd.)", slug="org-and-co")
 
         assert tenant.name == "Org & Co. (Ltd.)"
 

@@ -7,6 +7,7 @@ TenantMember — (legacy join table kept for backward-compat with existing tests
 These are the **single source of truth** for the tenants and users tables.
 src/memory/schema.py re-exports Tenant and User from here.
 """
+
 import uuid
 from datetime import UTC, datetime
 from typing import Optional
@@ -16,7 +17,6 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum as SAEnum,
-    Float,
     ForeignKey,
     String,
     Text,
@@ -39,13 +39,19 @@ class Tenant(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # domain: used by provisioning API (unique across the platform)
-    domain: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    domain: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
     # slug: used by legacy tests (unique within the platform)
-    slug: Mapped[Optional[str]] = mapped_column(String(100), unique=True, nullable=True, index=True)
+    slug: Mapped[Optional[str]] = mapped_column(
+        String(100), unique=True, nullable=True, index=True
+    )
     # tier: free | pro | enterprise
     tier: Mapped[str] = mapped_column(String(50), nullable=False, server_default="free")
     # status: active | suspended | deleted
-    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="active"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     db_connection_string: Mapped[Optional[str]] = mapped_column(Text(), nullable=True)
     encrypted_settings: Mapped[Optional[dict]] = mapped_column(JSON(), nullable=True)
@@ -81,7 +87,9 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # hashed_password: alias used by legacy tests
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(50), server_default="member", nullable=False)
+    role: Mapped[str] = mapped_column(
+        String(50), server_default="member", nullable=False
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

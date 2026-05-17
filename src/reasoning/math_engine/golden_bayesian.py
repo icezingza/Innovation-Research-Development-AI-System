@@ -10,14 +10,15 @@ Why φ?
   ratio, so confidence falls faster than it rises — matching the asymmetric
   cost of false confidence in scientific reasoning.
 """
+
 import math
 
 
 class GoldenBayesian:
     """Golden Ratio weighted Bayesian inference for hypothesis confidence."""
 
-    PHI: float = (1 + math.sqrt(5)) / 2   # 1.6180339887...
-    INV_PHI: float = 1 / PHI               # 0.6180339887...  (= PHI - 1)
+    PHI: float = (1 + math.sqrt(5)) / 2  # 1.6180339887...
+    INV_PHI: float = 1 / PHI  # 0.6180339887...  (= PHI - 1)
 
     @classmethod
     def update_confidence(

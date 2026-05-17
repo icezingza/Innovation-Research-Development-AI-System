@@ -13,6 +13,7 @@ from src.api.routes.auth import get_current_user
 from src.security.rls import get_rls_db
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.tenants.context import SYSTEM_TENANT_ID
+from src.security.regulatory_guard import get_regulatory_guard, RegulatoryViolation
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -28,25 +29,22 @@ class ResearchTaskCreated(BaseModel):
     status: str
 
 
-from src.security.regulatory_guard import get_regulatory_guard, RegulatoryViolation
-from fastapi import HTTPException
-
 @router.post("/tasks", response_model=ResearchTaskCreated, status_code=202)
 async def create_research_task(
     body: ResearchTaskRequest,
     request: Request,
     background_tasks: BackgroundTasks,
     pipeline: CognitivePipeline = Depends(get_pipeline),
-    session_factory = Depends(get_db_session),
+    session_factory=Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ) -> ResearchTaskCreated:
-    
+
     # === Regulatory Guard Check ===
     guard = get_regulatory_guard()
     try:
         guard.check(
             body.question,
-            context={"domain": "general", "tenant_id": current_user.get("tenant_id")}
+            context={"domain": "general", "tenant_id": current_user.get("tenant_id")},
         )
     except RegulatoryViolation as e:
         raise HTTPException(
@@ -55,8 +53,8 @@ async def create_research_task(
                 "error": "regulatory_violation",
                 "rule_id": e.rule_id,
                 "message": e.message,
-                "severity": e.severity
-            }
+                "severity": e.severity,
+            },
         )
     # === End Guard Check ===
 
@@ -86,7 +84,9 @@ async def create_research_task(
             "prior_hypotheses": body.prior_hypotheses,
         }
 
-        task = ResearchTask(id=task_id, tenant_id=tenant_id, question=body.question, status="pending")
+        task = ResearchTask(
+            id=task_id, tenant_id=tenant_id, question=body.question, status="pending"
+        )
         session.add(task)
         await session.commit()
 
@@ -138,7 +138,7 @@ async def get_research_task(
 async def get_task_trace(
     task_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Retrieve the auditable trace of a research task.
 
@@ -146,7 +146,8 @@ async def get_task_trace(
     Requires admin, auditor, or owner role.
     """
     from sqlalchemy import text
-    RequireRole(["admin", "auditor", "owner"])(current_user)
+
+    await RequireRole(["admin", "auditor", "owner"])(current_user)
 
     # Set RLS context so the query returns this tenant's data only
     tenant_id = current_user.get("tenant_id", "")
@@ -178,28 +179,32 @@ async def get_task_trace(
     hyps = hyps_result.scalars().all()
 
     events = []
-    
+
     # Add reasoning traces
     for trace in traces:
-        events.append({
-            "timestamp": trace.timestamp.isoformat(),
-            "agent": trace.agent_id or "ReasoningEngine",
-            "action": trace.operation,
-            "content": trace.output_summary
-        })
-    
+        events.append(
+            {
+                "timestamp": trace.timestamp.isoformat(),
+                "agent": trace.agent_id or "ReasoningEngine",
+                "action": trace.operation,
+                "content": trace.output_summary,
+            }
+        )
+
     # Add hypothesis events
     for hyp in hyps:
-        events.append({
-            "timestamp": hyp.created_at.isoformat(),
-            "agent": "HypothesisAgent",
-            "action": "propose" if hyp.generation == 0 else "refine",
-            "content": {
-                "hypothesis": hyp.statement,
-                "confidence": hyp.confidence,
-                "evidence": hyp.evidence
+        events.append(
+            {
+                "timestamp": hyp.created_at.isoformat(),
+                "agent": "HypothesisAgent",
+                "action": "propose" if hyp.generation == 0 else "refine",
+                "content": {
+                    "hypothesis": hyp.statement,
+                    "confidence": hyp.confidence,
+                    "evidence": hyp.evidence,
+                },
             }
-        })
+        )
 
     # Sort chronologically
     events.sort(key=lambda x: x["timestamp"])
@@ -208,7 +213,7 @@ async def get_task_trace(
         "task_id": task_id,
         "question": task.question,
         "status": task.status,
-        "events": events
+        "events": events,
     }
 
 

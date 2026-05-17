@@ -27,9 +27,7 @@ class APIKeyManager:
             self._enabled = bool(self._keys)
 
         if self._enabled:
-            logger.info(
-                "api_key_auth_enabled", extra={"key_count": len(self._keys)}
-            )
+            logger.info("api_key_auth_enabled", extra={"key_count": len(self._keys)})
         else:
             logger.warning("api_key_auth_disabled_open_access")
 

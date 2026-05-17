@@ -6,6 +6,7 @@ GET    /sessions/{id}         — get session state
 DELETE /sessions/{id}         — close (deactivate) a session
 POST   /sessions/{id}/goals   — attach a goal to a session
 """
+
 import logging
 
 from fastapi import APIRouter, HTTPException, Request

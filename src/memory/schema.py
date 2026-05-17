@@ -8,6 +8,7 @@ continue to work without change.
 tenant_id columns use String(36) so the schema works with both PostgreSQL (via
 Alembic migrations that set the real UUID type + RLS) and SQLite (unit tests).
 """
+
 import uuid
 from datetime import UTC, datetime
 

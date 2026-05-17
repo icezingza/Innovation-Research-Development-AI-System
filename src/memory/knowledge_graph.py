@@ -78,9 +78,7 @@ class KnowledgeGraph:
             },
         )
 
-    async def get_hypothesis_lineage(
-        self, hypothesis_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_hypothesis_lineage(self, hypothesis_id: str) -> list[dict[str, Any]]:
         return await self._connector.run_query(
             """
             MATCH path = (root:Hypothesis)-[:EVOLVED_TO*0..]->(h:Hypothesis {id: $id})

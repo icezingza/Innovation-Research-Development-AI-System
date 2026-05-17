@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import yaml
 
+
 class SwarmTemplate:
     def __init__(self, id: str, data: dict):
         self.id = id
@@ -11,6 +12,7 @@ class SwarmTemplate:
         self.recommended_agents = data.get("agents", [])
         self.knowledge_graph_seed = data.get("kg_seed", {})
         self.default_chain = data.get("chain", "default")
+
 
 class SwarmCatalog:
     def __init__(self, catalog_path: str = None):
@@ -34,7 +36,10 @@ class SwarmCatalog:
     def get(self, template_id: str) -> Optional[SwarmTemplate]:
         return self.templates.get(template_id)
 
+
 _catalog = None
+
+
 def get_swarm_catalog() -> SwarmCatalog:
     global _catalog
     if _catalog is None:

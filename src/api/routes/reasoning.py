@@ -45,9 +45,8 @@ async def run_recursive_reasoning(
         id=str(uuid.uuid4()),
         statement=body.hypothesis_statement,
         confidence=body.confidence,
-        evidence=body.evidence or [
-            f"Derived from: {body.question or body.hypothesis_statement}"
-        ],
+        evidence=body.evidence
+        or [f"Derived from: {body.question or body.hypothesis_statement}"],
         generation=0,
     )
     config = RecursiveConfig(

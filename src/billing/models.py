@@ -7,9 +7,9 @@ from pydantic import BaseModel
 @dataclass
 class QuotaStatus:
     allowed: bool
-    limit: Optional[int]       # None = unlimited
+    limit: Optional[int]  # None = unlimited
     used: int
-    remaining: Optional[int]   # None = unlimited
+    remaining: Optional[int]  # None = unlimited
     reset_at: datetime
     upgrade_message: Optional[str]
 
@@ -24,7 +24,9 @@ class UsageSummary(BaseModel):
     tenant_id: str
     plan: str
     period: dict  # {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
-    usage: dict[str, UsageMetric]  # {"workflows": ..., "hypotheses": ..., "api_calls": ...}
+    usage: dict[
+        str, UsageMetric
+    ]  # {"workflows": ..., "hypotheses": ..., "api_calls": ...}
 
 
 class PlanOut(BaseModel):

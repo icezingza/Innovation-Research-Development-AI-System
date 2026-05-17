@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Literal
 from pydantic import BaseModel, Field
 
+
 class ThinkingConfig(BaseModel):
     enabled: bool = False
     budget_tokens: int = 1024
+
 
 class CompletionRequest(BaseModel):
     prompt: str
@@ -13,6 +15,7 @@ class CompletionRequest(BaseModel):
     max_tokens: int = 2048
     thinking: ThinkingConfig = Field(default_factory=ThinkingConfig)
     enable_caching: bool = True
+
 
 class CompletionResponse(BaseModel):
     content: str

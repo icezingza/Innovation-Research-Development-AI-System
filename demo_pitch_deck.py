@@ -10,6 +10,7 @@
 
 Audience priority: B (Business) > A (Technical Depth) > C (Security)
 """
+
 import json
 import time
 import webbrowser
@@ -23,7 +24,7 @@ ARTIFACTS.mkdir(exist_ok=True)
 
 
 def banner(title: str) -> None:
-    print(f"\n{'='*70}\n  {title}\n{'='*70}")
+    print(f"\n{'=' * 70}\n  {title}\n{'=' * 70}")
 
 
 def pause(prompt: str = "Press ENTER after capturing screenshot...") -> None:
@@ -49,24 +50,30 @@ EMAIL_A = f"admin@{DOMAIN_A}"
 EMAIL_B = f"admin@{DOMAIN_B}"
 PWD = "DemoPass2026!"
 
-r = requests.post(f"{BASE}/tenants", json={
-    "name": "Acme Corp",
-    "domain": DOMAIN_A,
-    "tier": "pro",
-    "admin_email": EMAIL_A,
-    "admin_password": PWD,
-})
+r = requests.post(
+    f"{BASE}/tenants",
+    json={
+        "name": "Acme Corp",
+        "domain": DOMAIN_A,
+        "tier": "pro",
+        "admin_email": EMAIL_A,
+        "admin_password": PWD,
+    },
+)
 assert r.status_code == 201, f"Tenant A creation failed: {r.text}"
 TENANT_A_ID = r.json()["id"]
 print(f"  [OK] Tenant A (Acme, Pro tier): {TENANT_A_ID}")
 
-r = requests.post(f"{BASE}/tenants", json={
-    "name": "Beta Ltd",
-    "domain": DOMAIN_B,
-    "tier": "free",
-    "admin_email": EMAIL_B,
-    "admin_password": PWD,
-})
+r = requests.post(
+    f"{BASE}/tenants",
+    json={
+        "name": "Beta Ltd",
+        "domain": DOMAIN_B,
+        "tier": "free",
+        "admin_email": EMAIL_B,
+        "admin_password": PWD,
+    },
+)
 assert r.status_code == 201, f"Tenant B creation failed: {r.text}"
 TENANT_B_ID = r.json()["id"]
 print(f"  [OK] Tenant B (Beta, Free tier): {TENANT_B_ID}")
@@ -75,15 +82,25 @@ print(f"  [OK] Tenant B (Beta, Free tier): {TENANT_B_ID}")
 # ─── Step 2: Login + get JWTs ───────────────────────────────────────
 banner("Step 2: Login both tenants -> JWT tokens")
 
-r = requests.post(f"{BASE}/auth/login", json={
-    "email": EMAIL_A, "password": PWD, "tenant_id": TENANT_A_ID,
-})
+r = requests.post(
+    f"{BASE}/auth/login",
+    json={
+        "email": EMAIL_A,
+        "password": PWD,
+        "tenant_id": TENANT_A_ID,
+    },
+)
 TOKEN_A = r.json()["access_token"]
 print(f"  [OK] Token A: {TOKEN_A[:60]}...")
 
-r = requests.post(f"{BASE}/auth/login", json={
-    "email": EMAIL_B, "password": PWD, "tenant_id": TENANT_B_ID,
-})
+r = requests.post(
+    f"{BASE}/auth/login",
+    json={
+        "email": EMAIL_B,
+        "password": PWD,
+        "tenant_id": TENANT_B_ID,
+    },
+)
 TOKEN_B = r.json()["access_token"]
 print(f"  [OK] Token B: {TOKEN_B[:60]}...")
 
@@ -106,8 +123,18 @@ time.sleep(3)
 
 # ─── Save artifacts ─────────────────────────────────────────────────
 artifacts = {
-    "tenant_a": {"id": TENANT_A_ID, "domain": DOMAIN_A, "email": EMAIL_A, "tier": "pro"},
-    "tenant_b": {"id": TENANT_B_ID, "domain": DOMAIN_B, "email": EMAIL_B, "tier": "free"},
+    "tenant_a": {
+        "id": TENANT_A_ID,
+        "domain": DOMAIN_A,
+        "email": EMAIL_A,
+        "tier": "pro",
+    },
+    "tenant_b": {
+        "id": TENANT_B_ID,
+        "domain": DOMAIN_B,
+        "email": EMAIL_B,
+        "tier": "free",
+    },
     "token_a": TOKEN_A,
     "token_b": TOKEN_B,
     "task_id": TASK_ID,
@@ -126,7 +153,7 @@ screenshots = [
         "title": "FinOps Dashboard (CFO view)",
         "url": f"{BASE}/dashboard/finops/{TENANT_A_ID}",
         "tip": "เปิด Browser DevTools (F12) -> Application -> Local Storage -> "
-               f"add key='token' value='{TOKEN_A[:30]}...' -> reload page",
+        f"add key='token' value='{TOKEN_A[:30]}...' -> reload page",
         "selling_point": "CFO เห็นต้นทุน AI + Forecast ใน 3 วิ",
     },
     {
@@ -148,7 +175,7 @@ screenshots = [
         "title": "Swagger UI — API Coverage",
         "url": f"{BASE}/docs",
         "tip": "Scroll ไปที่ /research/tasks/{task_id}/trace, คลิก 'Try it out' "
-               "-> ใส่ JWT ใน Authorize button -> ดู JSON response",
+        "-> ใส่ JWT ใน Authorize button -> ดู JSON response",
         "selling_point": "Production-grade API — fully documented",
     },
     {
@@ -157,7 +184,7 @@ screenshots = [
         "url": "Terminal screenshot of curl command",
         "tip": (
             f"\nรันใน Terminal/PowerShell:\n"
-            f"  curl -i -H \"Authorization: Bearer {TOKEN_B[:40]}...\" "
+            f'  curl -i -H "Authorization: Bearer {TOKEN_B[:40]}..." '
             f"\\\n       {BASE}/tenants/{TENANT_A_ID}/finops\n"
             f"  # Expected: HTTP/1.1 403 Forbidden"
         ),

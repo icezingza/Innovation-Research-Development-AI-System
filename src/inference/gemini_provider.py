@@ -43,9 +43,7 @@ class GeminiProvider(BaseInferenceProvider):
         return "instant"
 
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
-        )
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
 
         # Build payload according to Gemini API spec
         payload = {
@@ -67,20 +65,18 @@ class GeminiProvider(BaseInferenceProvider):
 
         # Add system instruction if provided
         if request.system:
-            payload["system_instruction"] = {
-                "parts": [{"text": request.system}]
-            }
+            payload["system_instruction"] = {"parts": [{"text": request.system}]}
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 url,
                 headers={
                     "Content-Type": "application/json",
-                    "x-goog-api-key": self._api_key
+                    "x-goog-api-key": self._api_key,
                 },
                 json=payload,
             )
-            
+
             if response.status_code != 200:
                 logger.error(
                     "gemini_api_error",
@@ -89,10 +85,12 @@ class GeminiProvider(BaseInferenceProvider):
                         "response": response.text,
                     },
                 )
-                raise RuntimeError(f"Gemini API error {response.status_code}: {response.text}")
+                raise RuntimeError(
+                    f"Gemini API error {response.status_code}: {response.text}"
+                )
 
             data = response.json()
-            
+
             # Extract content from candidates
             try:
                 content = data["candidates"][0]["content"]["parts"][0]["text"]

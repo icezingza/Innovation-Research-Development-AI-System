@@ -1,4 +1,5 @@
 """Unit tests for KnowledgeGraph — queries are validated against a mock connector."""
+
 import uuid
 from unittest.mock import AsyncMock
 

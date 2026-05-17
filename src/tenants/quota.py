@@ -1,4 +1,5 @@
 """Quota tracking and enforcement per tenant using Redis monthly counters."""
+
 import calendar
 import logging
 from datetime import datetime, UTC
@@ -68,6 +69,11 @@ class QuotaService:
         if not allowed:
             logger.warning(
                 "quota_exceeded",
-                extra={"tenant_id": tenant_id, "tier": tier, "usage": usage, "limit": limit},
+                extra={
+                    "tenant_id": tenant_id,
+                    "tier": tier,
+                    "usage": usage,
+                    "limit": limit,
+                },
             )
         return allowed, usage, limit

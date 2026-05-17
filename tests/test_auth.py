@@ -1,8 +1,12 @@
 import pytest
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from src.auth.password import hash_password, verify_password
-from src.auth.jwt_handler import create_access_token, decode_access_token, InvalidTokenError
+from src.auth.jwt_handler import (
+    create_access_token,
+    decode_access_token,
+    InvalidTokenError,
+)
 from src.auth.refresh_store import RefreshTokenStore
 
 SECRET = "test-secret-that-is-at-least-32-characters-long"

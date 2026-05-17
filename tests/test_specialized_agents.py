@@ -1,4 +1,5 @@
 """Tests for HypothesisAgent, CritiqueAgent, and SynthesisAgent."""
+
 import uuid
 
 import pytest
@@ -16,6 +17,7 @@ from src.infrastructure.event_bus import (
 
 
 # ---------- HypothesisAgent ----------
+
 
 @pytest.mark.asyncio
 async def test_hypothesis_agent_returns_action_message():
@@ -51,6 +53,7 @@ async def test_hypothesis_agent_no_bus_still_works():
 
 
 # ---------- CritiqueAgent ----------
+
 
 @pytest.mark.asyncio
 async def test_critique_agent_returns_critique():
@@ -107,14 +110,27 @@ async def test_critique_agent_reports_consistency():
 
 # ---------- SynthesisAgent ----------
 
+
 @pytest.mark.asyncio
 async def test_synthesis_agent_returns_conclusion():
     hypotheses = [
-        {"id": "h1", "statement": "Sleep consolidates memory", "confidence": 0.8, "evidence": ["e1"]},
-        {"id": "h2", "statement": "Deep sleep is critical for memory", "confidence": 0.7, "evidence": ["e2"]},
+        {
+            "id": "h1",
+            "statement": "Sleep consolidates memory",
+            "confidence": 0.8,
+            "evidence": ["e1"],
+        },
+        {
+            "id": "h2",
+            "statement": "Deep sleep is critical for memory",
+            "confidence": 0.7,
+            "evidence": ["e2"],
+        },
     ]
     agent = SynthesisAgent()
-    msg = await agent.run({"goal": "How does sleep affect memory?", "hypotheses": hypotheses})
+    msg = await agent.run(
+        {"goal": "How does sleep affect memory?", "hypotheses": hypotheses}
+    )
     action = msg.content["action"]
     assert "conclusion" in action
     assert "confidence" in action
@@ -152,7 +168,12 @@ async def test_synthesis_agent_empty_hypotheses():
 async def test_synthesis_agent_selects_highest_quality():
     hypotheses = [
         {"id": "h1", "statement": "weak hypothesis", "confidence": 0.1, "evidence": []},
-        {"id": "h2", "statement": "strong hypothesis", "confidence": 0.95, "evidence": ["lots", "of", "evidence"]},
+        {
+            "id": "h2",
+            "statement": "strong hypothesis",
+            "confidence": 0.95,
+            "evidence": ["lots", "of", "evidence"],
+        },
     ]
     agent = SynthesisAgent()
     msg = await agent.run({"goal": "Which is better?", "hypotheses": hypotheses})

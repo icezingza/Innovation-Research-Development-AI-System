@@ -8,6 +8,4 @@ class RecursiveFeedbackSystem:
         return {}
 
     def evolve_strategy(self):
-        return {
-            'status': 'evolving'
-        }
+        return {"status": "evolving"}

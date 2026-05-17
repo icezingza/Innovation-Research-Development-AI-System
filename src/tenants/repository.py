@@ -18,11 +18,11 @@ class TenantRepository:
 
     async def create_tenant(self, name: str, slug: str) -> Tenant:
         """Create a new tenant.
-        
+
         Args:
             name: Display name of the tenant
             slug: URL-safe identifier (must be unique)
-            
+
         Returns:
             Created Tenant instance
         """
@@ -34,10 +34,10 @@ class TenantRepository:
 
     async def get_tenant_by_slug(self, slug: str) -> Optional[Tenant]:
         """Retrieve active tenant by slug.
-        
+
         Args:
             slug: The tenant slug
-            
+
         Returns:
             Tenant if found and active, None otherwise
         """
@@ -48,10 +48,10 @@ class TenantRepository:
 
     async def get_tenant_by_id(self, tenant_id: str) -> Optional[Tenant]:
         """Retrieve active tenant by ID.
-        
+
         Args:
             tenant_id: The tenant UUID
-            
+
         Returns:
             Tenant if found and active, None otherwise
         """
@@ -64,12 +64,12 @@ class TenantRepository:
         self, email: str, display_name: str, hashed_password: str
     ) -> User:
         """Create a new user.
-        
+
         Args:
             email: User email (must be unique)
             display_name: User display name
             hashed_password: Pre-hashed password
-            
+
         Returns:
             Created User instance
         """
@@ -86,10 +86,10 @@ class TenantRepository:
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieve active user by email.
-        
+
         Args:
             email: The user email
-            
+
         Returns:
             User if found and active, None otherwise
         """
@@ -100,10 +100,10 @@ class TenantRepository:
 
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Retrieve active user by ID.
-        
+
         Args:
             user_id: The user UUID
-            
+
         Returns:
             User if found and active, None otherwise
         """
@@ -116,12 +116,12 @@ class TenantRepository:
         self, tenant_id: str, user_id: str, role: str = "member"
     ) -> TenantMember:
         """Add a user to a tenant with a specific role.
-        
+
         Args:
             tenant_id: The tenant UUID
             user_id: The user UUID
             role: Membership role ('owner', 'admin', 'member')
-            
+
         Returns:
             Created TenantMember instance
         """
@@ -139,15 +139,13 @@ class TenantRepository:
         )
         return member
 
-    async def get_member(
-        self, tenant_id: str, user_id: str
-    ) -> Optional[TenantMember]:
+    async def get_member(self, tenant_id: str, user_id: str) -> Optional[TenantMember]:
         """Retrieve a user's membership in a specific tenant.
-        
+
         Args:
             tenant_id: The tenant UUID
             user_id: The user UUID
-            
+
         Returns:
             TenantMember if found, None otherwise
         """

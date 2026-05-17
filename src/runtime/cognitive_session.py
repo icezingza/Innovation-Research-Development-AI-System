@@ -4,6 +4,7 @@ Sessions track active research goals, workflow execution history, and
 accumulated findings. Backed by Redis when available; falls back to
 in-memory storage for single-process deployments.
 """
+
 import json
 import logging
 import time

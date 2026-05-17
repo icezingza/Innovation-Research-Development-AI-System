@@ -1,4 +1,5 @@
 """Tests for CognitiveSessionManager."""
+
 import pytest
 
 from src.runtime.cognitive_session import CognitiveSessionManager, SessionState

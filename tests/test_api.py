@@ -1,4 +1,5 @@
 """API integration tests using an in-memory SQLite DB and no external services."""
+
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 

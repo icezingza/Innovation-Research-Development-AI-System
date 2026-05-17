@@ -1,4 +1,5 @@
 """Middleware that enforces per-tenant monthly API quotas (Hard Block, HTTP 429)."""
+
 import json
 import logging
 
@@ -39,9 +40,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         tenant_ctx = getattr(request.state, "tenant", None)
-        tenant_id: str = (
-            getattr(tenant_ctx, "tenant_id", None) or SYSTEM_TENANT_ID
-        )
+        tenant_id: str = getattr(tenant_ctx, "tenant_id", None) or SYSTEM_TENANT_ID
 
         # Fallback: extract tenant_id from JWT when X-Tenant-ID header is absent
         if tenant_id == SYSTEM_TENANT_ID:
@@ -59,12 +58,14 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
         if not allowed:
             return Response(
-                content=json.dumps({
-                    "detail": "Monthly API quota exceeded",
-                    "tier": tier,
-                    "limit": limit,
-                    "used": usage,
-                }),
+                content=json.dumps(
+                    {
+                        "detail": "Monthly API quota exceeded",
+                        "tier": tier,
+                        "limit": limit,
+                        "used": usage,
+                    }
+                ),
                 status_code=429,
                 media_type="application/json",
                 headers={

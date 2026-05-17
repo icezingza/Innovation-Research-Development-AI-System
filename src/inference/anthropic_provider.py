@@ -9,6 +9,7 @@ from src.inference.base_provider import (
 
 logger = logging.getLogger(__name__)
 
+
 class AnthropicProvider(BaseInferenceProvider):
     """Anthropic Claude provider optimized with Ephemeral Caching and Thinking Budget."""
 
@@ -41,7 +42,7 @@ class AnthropicProvider(BaseInferenceProvider):
 
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
         url = "https://api.anthropic.com/v1/messages"
-        
+
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
@@ -74,21 +75,26 @@ class AnthropicProvider(BaseInferenceProvider):
         if request.thinking.enabled:
             payload["thinking"] = {
                 "type": "enabled",
-                "budget_tokens": request.thinking.budget_tokens
+                "budget_tokens": request.thinking.budget_tokens,
             }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(url, headers=headers, json=payload)
-            
+
             if response.status_code != 200:
                 logger.error(
                     "anthropic_api_error",
-                    extra={"status_code": response.status_code, "response": response.text},
+                    extra={
+                        "status_code": response.status_code,
+                        "response": response.text,
+                    },
                 )
-                raise RuntimeError(f"Anthropic API error {response.status_code}: {response.text}")
+                raise RuntimeError(
+                    f"Anthropic API error {response.status_code}: {response.text}"
+                )
 
             data = response.json()
-            
+
             content_text = ""
             for block in data.get("content", []):
                 if block.get("type") == "text":
@@ -96,7 +102,7 @@ class AnthropicProvider(BaseInferenceProvider):
 
             usage = data.get("usage", {})
             tokens_used = usage.get("output_tokens", 0) + usage.get("input_tokens", 0)
-            
+
             cache_read_tokens = usage.get("cache_read_input_tokens", 0)
             cache_creation_tokens = usage.get("cache_creation_input_tokens", 0)
 

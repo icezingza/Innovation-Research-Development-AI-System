@@ -1,4 +1,5 @@
 """Factory module — creates an InferenceRouter wired from Settings."""
+
 from src.config import Settings
 from src.inference.embedding_provider import (
     BaseEmbeddingProvider,

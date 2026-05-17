@@ -106,7 +106,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 name=RESEARCH_COLLECTION,
                 vector_size=embedding_provider.dimensions,
             )
-            logger.info("qdrant_collection_ready", extra={"collection": RESEARCH_COLLECTION})
+            logger.info(
+                "qdrant_collection_ready", extra={"collection": RESEARCH_COLLECTION}
+            )
         except Exception as exc:
             logger.warning("qdrant_collection_init_failed", extra={"error": str(exc)})
 
@@ -126,7 +128,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # --- quota + rate limiter services ---
     quota_service = QuotaService(redis_client=redis_store.client) if redis_ok else None
-    redis_rate_limiter = RedisRateLimiter(redis_client=redis_store.client) if redis_ok else None
+    redis_rate_limiter = (
+        RedisRateLimiter(redis_client=redis_store.client) if redis_ok else None
+    )
 
     # --- security ---
     key_manager = APIKeyManager(raw_keys=settings.api_keys)

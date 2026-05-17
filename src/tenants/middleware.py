@@ -30,7 +30,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         # Exempt paths always run as system tenant, free tier
-        if request.url.path in EXEMPT_PATHS or request.url.path.startswith("/dashboard"):
+        if request.url.path in EXEMPT_PATHS or request.url.path.startswith(
+            "/dashboard"
+        ):
             request.state.tenant = TenantContext(
                 tenant_id=SYSTEM_TENANT_ID,
                 user_id="",
@@ -73,5 +75,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 row = result.scalar_one_or_none()
                 return row if row else "free"
         except Exception as exc:
-            logger.warning("tenant_tier_lookup_failed", extra={"tenant_id": tenant_id, "error": str(exc)})
+            logger.warning(
+                "tenant_tier_lookup_failed",
+                extra={"tenant_id": tenant_id, "error": str(exc)},
+            )
             return "free"

@@ -4,6 +4,7 @@ AgentSpawner creates specialized agents on demand and can scale an
 AgentCoordinator by injecting new HypothesisAgent or CritiqueAgent
 instances without restart.
 """
+
 import logging
 import uuid
 from typing import Any

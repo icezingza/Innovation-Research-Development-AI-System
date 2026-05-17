@@ -3,11 +3,11 @@ class CognitivePipeline:
 
     def process(self, context):
         stages = [
-            'semantic_understanding',
-            'reasoning',
-            'hypothesis_generation',
-            'feedback_analysis',
-            'memory_update'
+            "semantic_understanding",
+            "reasoning",
+            "hypothesis_generation",
+            "feedback_analysis",
+            "memory_update",
         ]
 
         return stages
