@@ -27,12 +27,18 @@ All agents inherit from `BaseAgent`, which provides:
 
 ```python
 class BaseAgent(ABC):
-    agent_id: str
-    agent_type: str
-    inference_router: InferenceRouter | None
-    event_bus: RuntimeEventBus | None
-    governance: PolicyEnforcer | None
-    reasoning_trace: ReasoningTrace | None
+    # Defined in __init__:
+    agent_id: str   # UUID auto-generated if not provided
+    _active: bool   # lifecycle flag
+
+    # Dependencies are private attributes defined in each subclass:
+    # _inference: InferenceRouter | None  (HypothesisAgent, CritiqueAgent, etc.)
+    # _bus: RuntimeEventBus | None        (agents that publish events)
+    # _reflection: ReflectionEngine | None
+
+    def __init__(self, agent_id: str | None = None) -> None:
+        self.agent_id = agent_id or str(uuid.uuid4())
+        self._active = False
 
     async def run(self, context: dict) -> AgentMessage:
         # 1. Emit metric: agent_cycle_start
@@ -40,10 +46,9 @@ class BaseAgent(ABC):
         # 3. perceive(context) → perception
         # 4. reason(perception)  → reasoning
         # 5. act(reasoning)      → action
-        # 6. Build AgentMessage from action
-        # 7. PolicyEnforcer.enforce(message) if configured
-        # 8. Emit metric: agent_cycle_complete
-        # 9. Return AgentMessage
+        # 6. Build AgentMessage(sender_id, MessageType.ACTION, content)
+        # 7. Emit metric: agent_cycle_complete
+        # 8. Return AgentMessage
 
     @abstractmethod
     async def perceive(self, context: dict) -> dict: ...
@@ -79,9 +84,8 @@ BaseAgent(
 
 ```
 perceive(context)
-  ├─ Extracts: question, session_id, prior_evidence
-  ├─ Calls ResearchMemory.recall(question) for prior findings
-  └─ Returns: {question, prior_evidence, semantic_context}
+  ├─ Extracts: question, prior_evidence, generation
+  └─ Returns: {question, prior_evidence, generation}
 
 reason(perception)
   ├─ If InferenceRouter available:
@@ -313,22 +317,19 @@ async def handle_event(self, event: RuntimeEvent) -> None:
 
 ### Minimal (Heuristic Mode)
 ```python
-agent = HypothesisAgent(agent_id="h_001")
+agent = HypothesisAgent()
 # No inference_router → heuristic generation
 # No event_bus → no event publishing
-# No governance → no policy enforcement
+# reflection_engine and hypothesis_engine auto-created with defaults
 ```
 
 ### Production (Full Stack)
 ```python
 agent = HypothesisAgent(
-    agent_id="h_001",
-    inference_router=InferenceRouter(providers=[...], reasoning_trace=trace),
+    reflection_engine=ReflectionEngine(),
+    hypothesis_engine=HypothesisEvolutionEngine(reflection_engine),
+    inference_router=InferenceRouter(providers=[...]),
     event_bus=RedisEventBus(redis_client=redis),
-    governance=PolicyEnforcer(audit_log=audit_log),
-    reasoning_trace=ReasoningTrace(redis_client=redis, session_factory=pg_factory),
-    memory=research_memory,
-    context_engine=context_engine,
 )
 ```
 

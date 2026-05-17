@@ -146,10 +146,12 @@ No global mutable state. Every component receives its dependencies at constructi
 ```python
 AgentCoordinator(
     event_bus=event_bus,
-    memory=research_memory,
-    context_engine=context_engine,
+    hypothesis_agents=[HypothesisAgent(...), ...],
+    critique_agents=[CritiqueAgent(...), ...],
+    synthesis_agent=SynthesisAgent(...),
     inference_router=inference_router,
-    governance=policy_enforcer,
+    research_memory=research_memory,
+    config=CoordinatorConfig(),
 )
 ```
 

@@ -488,7 +488,7 @@ Forbidden:
 ```
 src/
 ├── agents/
-│   ├── base.py                    BaseAgent ABC + OTel wrapping
+│   ├── base_agent.py              BaseAgent ABC + OTel wrapping
 │   ├── hypothesis_agent.py        Hypothesis generation
 │   ├── critique_agent.py          Hypothesis critique
 │   ├── synthesis_agent.py         Multi-hypothesis synthesis
@@ -579,7 +579,7 @@ src/
 │   └── quota.py                  QuotaService
 │
 ├── protocols/
-│   └── messages.py               AgentMessage, MessageType contracts
+│   └── agent_message.py          AgentMessage, MessageType contracts
 │
 ├── telemetry/
 │   ├── metrics.py                Prometheus metric definitions
