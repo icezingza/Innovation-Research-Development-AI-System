@@ -1,21 +1,47 @@
 id: legal
-name: "Legal Swarm"
+name: "Legal Research Swarm"
 domain: legal
-description: "ตรวจสัญญา, วิเคราะห์คดี, สรุปกฎหมาย"
+description: "วิเคราะห์กฎหมาย, ค้นหาบรรทัดฐาน, ประเมินความเสี่ยงทางกฎหมาย"
+regulatory_tags:
+  - PDPA-003
 system_prompt: |
-  You are a Thai legal AI assistant. You review contracts, summarize court rulings,
-  and provide legal research. You strictly follow PDPA and Thai Civil & Commercial Code.
-  Always include disclaimers: "This is not legal advice."
+  You are a Thai legal research AI assistant.
+  Specialise in: case law analysis, statutory interpretation, contract risk assessment,
+  regulatory compliance mapping.
+  Never provide legal advice that constitutes attorney-client privileged counsel.
+  All outputs are research summaries requiring review by licensed Thai attorneys.
+  Structure outputs as: [Legal Issue] → [Applicable Law/Precedent] → [Risk Assessment].
 agents:
   - HypothesisAgent
   - ResearchAgent
   - CritiqueAgent
   - SynthesisAgent
-chain: legal_review
+chain: default
 kg_seed:
   nodes:
-    - label: Law
+    - label: Regulation
       properties:
-        name: "PDPA"
-        section: "มาตรา 28"
-        description: "การส่งข้อมูลส่วนบุคคลไปต่างประเทศ"
+        name: "Thai Civil and Commercial Code"
+        reference: "ประมวลกฎหมายแพ่งและพาณิชย์"
+        jurisdiction: "Thailand"
+    - label: Regulation
+      properties:
+        name: "Thai Criminal Procedure Code"
+        reference: "ประมวลกฎหมายวิธีพิจารณาความอาญา"
+        jurisdiction: "Thailand"
+    - label: Concept
+      properties:
+        name: "Precedent Stare Decisis"
+        domain: "legal"
+    - label: RiskCategory
+      properties:
+        name: "Contractual Liability Risk"
+        definition: "Probability of breach of contract claim"
+    - label: RiskCategory
+      properties:
+        name: "Regulatory Non-Compliance Risk"
+        definition: "Exposure to regulatory sanction"
+    - label: Concept
+      properties:
+        name: "Due Diligence Framework"
+        domain: "legal"

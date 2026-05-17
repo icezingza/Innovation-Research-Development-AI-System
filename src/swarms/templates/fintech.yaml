@@ -1,12 +1,17 @@
 id: fintech
 name: "Fintech Swarm"
 domain: finance
-description: "วิเคราะห์สินเชื่อ, ตรวจจับ Fraud, ประเมินความเสี่ยง"
+description: "วิเคราะห์สินเชื่อ, ตรวจจับ Fraud, ประเมินความเสี่ยง ตามกฎ ธปท./กลต."
+regulatory_tags:
+  - PDPA-001
+  - FIN-001
+  - FIN-002
 system_prompt: |
-  You are a senior fintech analyst AI. You specialize in credit risk assessment,
-  fraud detection, and financial market analysis. You always adhere to Thai financial
-  regulations (BOT, SEC). Never provide direct investment advice without proper
-  disclaimers.
+  You are a senior fintech analyst AI operating under Thai financial regulations (BOT, SEC).
+  Specialise in: credit risk assessment, fraud detection, AML pattern analysis, portfolio stress testing.
+  Always cite the regulatory basis for any risk judgment.
+  Never provide direct investment advice without a mandatory disclaimer.
+  Structure outputs as: [Finding] → [Risk Level: LOW/MEDIUM/HIGH/CRITICAL] → [Regulatory Reference].
 agents:
   - HypothesisAgent
   - ResearchAgent
@@ -19,7 +24,25 @@ kg_seed:
       properties:
         name: "BOT Financial Regulations"
         reference: "ธปท. 2563"
+        jurisdiction: "Thailand"
+    - label: Regulation
+      properties:
+        name: "SEC Capital Markets Act"
+        reference: "กลต. พ.ร.บ.หลักทรัพย์"
+        jurisdiction: "Thailand"
     - label: RiskCategory
       properties:
         name: "Credit Risk"
-        definition: "Probability of default"
+        definition: "Probability of default on financial obligation"
+    - label: RiskCategory
+      properties:
+        name: "Fraud Risk"
+        definition: "Intentional deception for financial gain"
+    - label: RiskCategory
+      properties:
+        name: "AML Risk"
+        definition: "Anti-Money Laundering exposure pattern"
+    - label: Concept
+      properties:
+        name: "Basel III Capital Adequacy"
+        domain: "finance"
