@@ -21,3 +21,4 @@ pytest
 pytest-asyncio
 ruff
 pytest-benchmark>=4.0
+pytest-json-report

@@ -12,3 +12,6 @@ build/
 *.tar
 *.log
 .qdrant-initialized
+
+evaluation_report.json
+evaluation_report.html
