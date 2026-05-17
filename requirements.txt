@@ -20,3 +20,4 @@ python-jose[cryptography]==3.3.0
 pytest
 pytest-asyncio
 ruff
+pytest-benchmark>=4.0
