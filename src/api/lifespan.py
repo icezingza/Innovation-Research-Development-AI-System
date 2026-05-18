@@ -47,6 +47,9 @@ from src.tenants.quota import QuotaService
 
 logger = logging.getLogger(__name__)
 
+from src.telemetry.tracing import configure_tracing
+configure_tracing()
+
 
 async def _probe(name: str, coro, errors: dict) -> bool:
     try:
