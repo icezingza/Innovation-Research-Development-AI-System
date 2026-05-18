@@ -10,6 +10,8 @@ from src.reasoning.math_engine.golden_bayesian import GoldenBayesian
 from src.reasoning.reflection_engine import ReflectionEngine
 from src.telemetry.runtime_metrics import runtime_events
 from src.telemetry.tracing import tracer
+from src.reasoning.adaptive_reasoning import AdaptiveReasoningEngine
+from src.reasoning.self_healing import SelfHealingOptimizer
 
 
 class DebatePosition(BaseModel):
@@ -64,6 +66,8 @@ class DebateRuntime:
         self._inference = inference_router
         self._proponent_id = f"proponent-{str(uuid.uuid4())[:8]}"
         self._opponent_id = f"opponent-{str(uuid.uuid4())[:8]}"
+        self._adaptive_engine = AdaptiveReasoningEngine(self._inference)
+        self._self_healing = SelfHealingOptimizer()
 
     async def debate(self, hypothesis: str, max_rounds: int = 3) -> DebateResult:
         with tracer.start_as_current_span("orchestration.debate"):
@@ -99,16 +103,30 @@ class DebateRuntime:
                         else ""
                     )
                 )
-            output = await self._inference.complete(
-                prompt=prompt,
-                system=(
-                    "You are a scientific debate participant. "
-                    "Be precise, use evidence-based reasoning, one paragraph only."
-                ),
-                temperature=0.75,
+            system_prompt = (
+                "You are a scientific debate participant. "
+                "Be precise, use evidence-based reasoning, one paragraph only."
             )
-            if output:
-                return output.strip(), 0.72
+            # Apply active ASI self-healing optimizations
+            optimizations = self._self_healing.get_active_optimizations("global")
+            for opt in optimizations:
+                if opt.get("prompt_injection"):
+                    system_prompt += f" {opt['prompt_injection']}"
+
+            try:
+                output = await self._inference.complete(
+                    prompt=prompt,
+                    system=system_prompt,
+                    temperature=0.75,
+                )
+                if output:
+                    return output.strip(), 0.72
+            except Exception as e:
+                # Trigger self-healing on failure
+                await self._self_healing.ingest_failure_event(
+                    "inference_error", {"agent_id": "global", "error": str(e)}
+                )
+                raise
 
         # Heuristic fallback
         if role == "proponent":
@@ -141,6 +159,26 @@ class DebateRuntime:
         return any(hashes[i] == hashes[i + 1] for i in range(len(hashes) - 1))
 
     async def _run(self, hypothesis: str, max_rounds: int) -> DebateResult:
+        # Adaptive Reasoning check
+        complexity_data = await self._adaptive_engine.evaluate_task_complexity(
+            hypothesis
+        )
+        if complexity_data["complexity_score"] <= 3:
+            # Fast track without full debate
+            return DebateResult(
+                debate_id=str(uuid.uuid4()),
+                hypothesis=hypothesis,
+                rounds=[],
+                winner="proponent",
+                winner_argument=f"Fast resolution (Complexity: {complexity_data['complexity_score']}): {hypothesis}",
+                proponent_final_quality=0.85,
+                opponent_final_quality=0.0,
+                converged=True,
+                convergence_reason="adaptive_fast_track",
+                total_rounds=0,
+                duration_seconds=0.0,
+            )
+
         rounds: list[DebateRound] = []
         proponent_arg: str | None = None
         opponent_arg: str | None = None
