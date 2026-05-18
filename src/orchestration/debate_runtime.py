@@ -1,3 +1,4 @@
+import hashlib
 import time
 import uuid
 from typing import Any, Literal
@@ -5,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from src.reasoning.contradiction_analyzer import ContradictionAnalyzer
+from src.reasoning.math_engine.golden_bayesian import GoldenBayesian
 from src.reasoning.reflection_engine import ReflectionEngine
 from src.telemetry.runtime_metrics import runtime_events
 from src.telemetry.tracing import tracer
@@ -35,6 +37,7 @@ class DebateResult(BaseModel):
     proponent_final_quality: float
     opponent_final_quality: float
     converged: bool
+    convergence_reason: str = ""
     total_rounds: int
     duration_seconds: float
 
@@ -122,6 +125,21 @@ class DebateRuntime:
             )
         return base, 0.55
 
+    @staticmethod
+    def _argument_hash(proponent: str, opponent: str) -> str:
+        combined = f"{proponent}|||{opponent}"
+        return hashlib.sha256(combined.encode()).hexdigest()
+
+    def _detect_circuit_breaker(self, rounds: list[DebateRound]) -> bool:
+        """Return True if any two consecutive rounds share identical argument hashes."""
+        if len(rounds) < 2:
+            return False
+        hashes = [
+            self._argument_hash(r.proponent.argument, r.opponent.argument)
+            for r in rounds
+        ]
+        return any(hashes[i] == hashes[i + 1] for i in range(len(hashes) - 1))
+
     async def _run(self, hypothesis: str, max_rounds: int) -> DebateResult:
         rounds: list[DebateRound] = []
         proponent_arg: str | None = None
@@ -165,6 +183,26 @@ class DebateRuntime:
             if report.is_consistent:
                 break
 
+        # Circuit breaker: stale debate detected → force Bayesian synthesis
+        circuit_breaker_triggered = (
+            not (bool(rounds) and rounds[-1].is_consistent)
+            and self._detect_circuit_breaker(rounds)
+        )
+        convergence_reason = ""
+        if circuit_breaker_triggered:
+            evidence_scores = [
+                (r.proponent.confidence + r.opponent.confidence) / 2
+                for r in rounds
+            ]
+            contradiction_flags = [not r.is_consistent for r in rounds]
+            GoldenBayesian.batch_update(
+                prior=0.5,
+                evidence_scores=evidence_scores,
+                contradiction_flags=contradiction_flags,
+            )
+            convergence_reason = "circuit_breaker"
+            runtime_events.labels(event_type="debate_circuit_breaker").inc()
+
         # Score final positions with reflection engine
         p_reflection = await self._reflection.reflect(
             {
@@ -206,6 +244,7 @@ class DebateRuntime:
             proponent_final_quality=p_score,
             opponent_final_quality=o_score,
             converged=converged,
+            convergence_reason=convergence_reason,
             total_rounds=len(rounds),
             duration_seconds=0.0,
         )
