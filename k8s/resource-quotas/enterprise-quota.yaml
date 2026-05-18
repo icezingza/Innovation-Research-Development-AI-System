@@ -1,0 +1,64 @@
+# Enterprise Tier — Dedicated Resource Pool
+# Physically isolated from free/pro tenants via separate namespace.
+# Maps to ResourcePolicy(tier="enterprise") in src/tenants/resource_policy.py
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ird-enterprise
+  labels:
+    tier: enterprise
+    isolation: dedicated
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: enterprise-resource-quota
+  namespace: ird-enterprise
+spec:
+  hard:
+    # Compute — dedicated headroom, no sharing with lower tiers
+    requests.cpu: "16"
+    limits.cpu: "32"
+    requests.memory: "32Gi"
+    limits.memory: "64Gi"
+
+    # Storage
+    requests.storage: "500Gi"
+    persistentvolumeclaims: "20"
+
+    # Workload objects
+    pods: "100"
+    services: "20"
+    configmaps: "50"
+    secrets: "50"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000
+globalDefault: false
+description: "Enterprise tenant workloads — highest scheduling priority"
+
+---
+# LimitRange ensures every pod/container in this namespace has resource limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: enterprise-limits
+  namespace: ird-enterprise
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "2"
+        memory: "4Gi"
+      defaultRequest:
+        cpu: "1"
+        memory: "2Gi"
+      max:
+        cpu: "8"
+        memory: "16Gi"

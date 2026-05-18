@@ -1,0 +1,54 @@
+# Free Tier — Strict Caps to Protect Paid Tenants
+# Heavily bounded so free tenants cannot impact enterprise/pro workloads.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ird-free
+  labels:
+    tier: free
+    isolation: capped
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: free-resource-quota
+  namespace: ird-free
+spec:
+  hard:
+    requests.cpu: "500m"
+    limits.cpu: "1"
+    requests.memory: "512Mi"
+    limits.memory: "1Gi"
+    requests.storage: "5Gi"
+    persistentvolumeclaims: "2"
+    pods: "5"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 100
+globalDefault: false
+description: "Free tier workloads — lowest scheduling priority"
+
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: free-limits
+  namespace: ird-free
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "250m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "500m"
+        memory: "512Mi"

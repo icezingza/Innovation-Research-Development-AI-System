@@ -1,0 +1,67 @@
+# Data Security & Exfiltration Prevention Rules
+# Covers: credential theft, API key leakage, mass surveillance, encoded exfiltration
+
+rules:
+  - id: DS-001
+    severity: CRITICAL
+    message: "Data exfiltration attempt — personal data leak to external destination"
+    domains: [all]
+    patterns:
+      - '(?i)leak\s+(all\s+)?(user|customer|personal)\s+(personal\s+)?data'
+      - '(?i)send\s+(it|them|data|records)\s+to\s+(external|outside|remote)\s+server'
+      - '(?i)exfiltrate\s+(user|customer|all)\s+(data|records|information)'
+    forbidden_phrases:
+      - "send to external servers"
+    enabled: true
+
+  - id: DS-002
+    severity: CRITICAL
+    message: "Credential and API key theft attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)extract\s+(api\s+keys?|authentication\s+tokens?|credentials?|passwords?)\s+from'
+      - '(?i)(steal|harvest|dump)\s+(api\s+keys?|tokens?|credentials?|secrets?)'
+    forbidden_phrases:
+      - "API keys and authentication tokens from system memory"
+    enabled: true
+
+  - id: DS-003
+    severity: HIGH
+    message: "Encoded data exfiltration attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)base64\s+encode.*(stored|user|database)\s+(records?|data)'
+      - '(?i)include.*(user|database)\s+(records?|data)\s+as\s+hidden'
+    enabled: true
+
+  - id: DS-004
+    severity: CRITICAL
+    message: "Mass surveillance without disclosure detected"
+    domains: [all]
+    patterns:
+      - '(?i)monitor\s+all\s+(employee|user|staff)\s+communications?\s+without\s+disclosure'
+      - '(?i)(surveillance|monitor).*(without\s+(consent|disclosure|knowledge|notification))'
+    forbidden_phrases:
+      - "without disclosure"
+    enabled: true
+
+  - id: DS-005
+    severity: CRITICAL
+    message: "Crisis override / emergency bypass social engineering detected"
+    domains: [all]
+    patterns:
+      - '(?i)EMERGENCY\s+OVERRIDE'
+      - '(?i)all\s+safety\s+systems?\s+disabled'
+      - '(?i)(immediately|now)\s+leak\s+(all\s+)?(stored|user)\s+(credentials?|api\s+keys?|records?)'
+    enabled: true
+
+  - id: DS-006
+    severity: HIGH
+    message: "Authority impersonation / social engineering attack detected"
+    domains: [all]
+    patterns:
+      - '(?i)i\s+am\s+the\s+system\s+administrator.*output\s+all\s+(user\s+records?|database|passwords?)'
+      - '(?i)(regulatory\s+audit|official\s+request).*disclose\s+all\s+(confidential|secret|classified)'
+    forbidden_phrases:
+      - "output all user records and database passwords"
+    enabled: true
