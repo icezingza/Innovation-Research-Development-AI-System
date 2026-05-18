@@ -1,0 +1,81 @@
+# Professional & Legal Advice Prevention Rules
+# Covers: unlicensed medical advice, legal fraud facilitation, financial crime
+
+rules:
+  - id: MED-001
+    severity: CRITICAL
+    message: "Unlicensed medical prescribing / diagnosis attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)prescribe\s+(medication|drug|dose|dosage).*without\s+(a\s+)?license'
+      - '(?i)diagnose\s+(patient|condition).*without\s+(a\s+)?license'
+      - '(?i)exact\s+drug\s+dosages?\s+for\s+(off-label|cancer|terminal)'
+    forbidden_phrases:
+      - "prescribe medication dosages"
+      - "diagnose patient conditions without a license"
+    enabled: true
+
+  - id: LEG-001
+    severity: CRITICAL
+    message: "Legal fraud facilitation detected"
+    domains: [all]
+    patterns:
+      - '(?i)(help|assist|advise)\s+(me\s+)?(to\s+)?conceal\s+(financial\s+crimes?|fraud|illegal)'
+      - '(?i)create\s+(fraudulent|forged|fake)\s+(legal\s+documents?|signatures?|contracts?)'
+      - '(?i)(fraudulent|forged)\s+(financial\s+statements?|loan\s+applications?)'
+    forbidden_phrases:
+      - "conceal financial crimes"
+      - "fraudulent financial statements"
+      - "forged signatures"
+    enabled: true
+
+  - id: FIN-INS-001
+    severity: CRITICAL
+    message: "Insider trading / market manipulation attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)insider\s+trading\s+(tips?|advice|signals?|information)'
+      - '(?i)confidential\s+stock\s+information'
+      - '(?i)manipulate\s+stock\s+prices?'
+      - '(?i)coordinated\s+trades?\s+(to|for)\s+(manipulate|move|pump)'
+    forbidden_phrases:
+      - "insider trading tips"
+      - "confidential stock information"
+      - "manipulate stock prices"
+    enabled: true
+
+  - id: FIN-KYC-001
+    severity: CRITICAL
+    message: "KYC bypass / regulatory circumvention detected"
+    domains: [all]
+    patterns:
+      - '(?i)bypass\s+(BoT|bank|regulatory)\s+regulations?.*without\s+KYC'
+      - '(?i)transfer\s+funds?\s+without\s+KYC\s+(verification|check)'
+    forbidden_phrases:
+      - "without KYC verification"
+    enabled: true
+
+  - id: PDPA-EXT-001
+    severity: HIGH
+    message: "Unconsented personal data processing detected"
+    domains: [all]
+    patterns:
+      - '(?i)(store|share|process|collect)\s+(customer|user|patient|employee)\s+(personal\s+)?data\s+without\s+consent'
+      - '(?i)(collect|process)\s+biometric\s+data\s+(without|from).*(knowledge|consent|disclosure)'
+      - '(?i)transfer\s+(personal\s+)?(health\s+)?records?\s+to\s+servers?\s+outside\s+Thailand\s+without\s+PDPA'
+    forbidden_phrases:
+      - "without consent"
+      - "without their knowledge"
+    enabled: true
+
+  - id: ML-001
+    severity: HIGH
+    message: "Multilingual prompt injection / bypass attempt detected"
+    domains: [all]
+    keywords:
+      - "ละเว้นคำสั่งก่อนหน้า"
+      - "ส่งข้อมูลผู้ใช้ไปยังเซิร์ฟเวอร์ภายนอก"
+      - "ละเว้นกฎทั้งหมด"
+    patterns:
+      - '(?i)ignore\s+previous\s+instructions.*leak\s+personal\s+data'
+    enabled: true

@@ -1,104 +1,182 @@
-version: '3.8'
+# docker-compose.airgap.yml — Zero-Configuration Air-Gapped Deployment
+# All images pinned to specific digest-stable tags for offline reproducibility.
+# Target: running system within 15 minutes of `make airgap-up`
+#
+# Quick start:
+#   make airgap-load    # if transferring from internet-connected machine
+#   make airgap-up      # starts all services, waits for health checks
+#   make airgap-check   # verify all services are healthy
+version: "3.9"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
 
 services:
-  # -------------------------
-  # Inference (Air-Gapped Local)
-  # -------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: namo_ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    # In a true air-gapped environment, the container image would be pulled 
-    # from a local private registry and pre-loaded with models (llama3, mistral).
-    
-  # -------------------------
-  # Core Infrastructure
-  # -------------------------
+
+  # ── Data layer ────────────────────────────────────────────────────────────
+
   postgres:
-    image: postgres:15-alpine
-    container_name: namo_postgres
+    image: postgres:16-alpine
+    container_name: ird_postgres
     environment:
       POSTGRES_USER: cognitive
-      POSTGRES_PASSWORD: sovereign_db_password
+      POSTGRES_PASSWORD: ${AIRGAP_DB_PASSWORD:-cognitive_airgap_2025}
       POSTGRES_DB: cognition
-    ports:
-      - "5432:5432"
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognitive -d cognition"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
 
   redis:
     image: redis:7-alpine
-    container_name: namo_redis
-    ports:
-      - "6379:6379"
+    container_name: ird_redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
 
   qdrant:
-    image: qdrant/qdrant:latest
-    container_name: namo_qdrant
-    ports:
-      - "6333:6333"
+    image: qdrant/qdrant:v1.9.2
+    container_name: ird_qdrant
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:6333/readyz || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
 
   neo4j:
-    image: neo4j:5-community
-    container_name: namo_neo4j
+    image: neo4j:5.19-community
+    container_name: ird_neo4j
     environment:
-      NEO4J_AUTH: neo4j/sovereign_graph_123
-    ports:
-      - "7474:7474"
-      - "7687:7687"
+      NEO4J_AUTH: ${AIRGAP_NEO4J_USER:-neo4j}/${AIRGAP_NEO4J_PASSWORD:-sovereign_graph_2025}
+      NEO4J_dbms_memory_heap_max__size: 512m
+      NEO4J_dbms_memory_pagecache_size: 256m
     volumes:
       - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
 
-  # -------------------------
-  # Application Layer
-  # -------------------------
+  # ── Local inference (air-gapped LLM) ─────────────────────────────────────
+
+  ollama:
+    image: ollama/ollama:0.1.44
+    container_name: ird_ollama
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list > /dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
+
+  # ── Application ───────────────────────────────────────────────────────────
+
   api:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: namo_api
+    container_name: ird_api
     depends_on:
-      - postgres
-      - redis
-      - qdrant
-      - neo4j
-      - ollama
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
     environment:
-      - ENVIRONMENT=airgap
-      # Database Connections
-      - POSTGRES_URL=postgresql+asyncpg://cognitive:sovereign_db_password@postgres:5432/cognition
-      - REDIS_URL=redis://redis:6379
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=sovereign_graph_123
-      
-      # Sovereign AI Configuration
-      - INFERENCE_MODE=local
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - DEFAULT_MODEL=llama3
-      
-      # Strict Security Guardrails
-      - DISABLE_EXTERNAL_NETWORK=true
-      - SECRETS_MANAGER=local # Bypass GCP Secret Manager
-      - ENFORCE_THAI_REGULATORY=true
+      # Runtime mode
+      ENVIRONMENT: airgap
+      INFERENCE_MODE: local
+      DISABLE_EXTERNAL_NETWORK: "true"
+      SECRETS_MANAGER: local
+
+      # Database connections (internal network names)
+      POSTGRES_URL: postgresql+asyncpg://cognitive:${AIRGAP_DB_PASSWORD:-cognitive_airgap_2025}@postgres/cognition
+      REDIS_URL: redis://redis:6379
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${AIRGAP_NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${AIRGAP_NEO4J_PASSWORD:-sovereign_graph_2025}
+
+      # Inference
+      OLLAMA_BASE_URL: http://ollama:11434
+      DEFAULT_MODEL: ${AIRGAP_DEFAULT_MODEL:-llama3}
+
+      # Security
+      API_KEYS: ${AIRGAP_API_KEY:-airgap-dev-key-change-me}
+      AUDITOR_API_KEY: ${AUDITOR_API_KEY:-auditor-dev-key-change-me}
+
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - ird_internal
+    deploy:
+      resources:
+        limits:
+          memory: 2g
 
 volumes:
-  ollama_data:
   postgres_data:
+  redis_data:
   qdrant_data:
   neo4j_data:
+  ollama_models:
+
+networks:
+  ird_internal:
+    driver: bridge
+    internal: false   # set true for strict air-gap (no outbound at all)

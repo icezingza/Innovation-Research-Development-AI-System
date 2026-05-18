@@ -1,0 +1,54 @@
+# Pro Tier — Shared Pool with Guaranteed Minimums
+# Co-located with other pro tenants but bounded to prevent noisy-neighbor.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ird-pro
+  labels:
+    tier: pro
+    isolation: shared-bounded
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: pro-resource-quota
+  namespace: ird-pro
+spec:
+  hard:
+    requests.cpu: "4"
+    limits.cpu: "8"
+    requests.memory: "8Gi"
+    limits.memory: "16Gi"
+    requests.storage: "100Gi"
+    persistentvolumeclaims: "10"
+    pods: "30"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: normal-priority
+value: 500
+globalDefault: true
+description: "Pro tenant workloads — normal scheduling priority"
+
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pro-limits
+  namespace: ird-pro
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "1Gi"
+      defaultRequest:
+        cpu: "250m"
+        memory: "512Mi"
+      max:
+        cpu: "4"
+        memory: "8Gi"

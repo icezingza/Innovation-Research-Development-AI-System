@@ -18,7 +18,15 @@ from src.api.routes.streams import router as streams_router
 from src.api.routes.workflows import router as workflows_router
 from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.tenants import router as tenants_router
+from src.api.routes.benchmarks import router as benchmarks_router
 from src.api.routes.experiments import router as experiments_router
+from src.api.routes.audit_sdk import router as audit_sdk_router
+from src.api.routes.security import router as security_router
+from src.api.routes.vertical_swarms import router as vertical_swarms_router
+from src.api.routes.telemetry import router as telemetry_router
+from src.api.routes.autonomy import router as autonomy_router
+from src.api.routes.evolution import router as evolution_router
+from src.api.routes.chaos import router as chaos_router
 
 # swarms_router: Phase 4 swarm templates (incomplete - missing src.database module)
 # Temporarily disabled until swarms.models migrates to src.memory.schema.Base
@@ -36,6 +44,7 @@ def create_app(lifespan_override=None) -> FastAPI:
     from src.security.rate_limit_middleware import RateLimitMiddleware
     from src.tenants.middleware import TenantMiddleware
     from src.tenants.quota_middleware import QuotaMiddleware
+    from src.tenants.resource_isolation import ResourceIsolationMiddleware
     from fastapi.middleware.cors import CORSMiddleware
 
     app = FastAPI(
@@ -55,6 +64,7 @@ def create_app(lifespan_override=None) -> FastAPI:
 
     # Middleware stack (last added = first executed):
     # Request flow: Security → Tenant → RateLimit → Quota → Route
+    app.add_middleware(ResourceIsolationMiddleware)
     app.add_middleware(QuotaMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(TenantMiddleware)
@@ -75,6 +85,14 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(tenants_router)
     app.include_router(experiments_router)
+    app.include_router(benchmarks_router)
+    app.include_router(audit_sdk_router)
+    app.include_router(security_router)
+    app.include_router(vertical_swarms_router)
+    app.include_router(telemetry_router)
+    app.include_router(autonomy_router)
+    app.include_router(evolution_router)
+    app.include_router(chaos_router)
     if _SWARMS_AVAILABLE:
         app.include_router(swarms_router)
 

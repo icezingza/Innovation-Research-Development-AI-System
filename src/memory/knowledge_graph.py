@@ -128,6 +128,22 @@ class KnowledgeGraph:
             {"domain": domain, "concept": concept, "properties": props},
         )
 
+    async def link_domains(
+        self,
+        source_domain: str,
+        target_domain: str,
+        relation: str,
+    ) -> None:
+        """Create a typed relationship between two Domain nodes."""
+        await self._connector.run_query(
+            f"""
+            MERGE (a:Domain {{name: $source}})
+            MERGE (b:Domain {{name: $target}})
+            MERGE (a)-[:{relation}]->(b)
+            """,
+            {"source": source_domain, "target": target_domain},
+        )
+
     async def store_speculative_knowledge(
         self,
         node_id: str,

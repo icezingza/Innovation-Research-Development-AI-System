@@ -5,6 +5,7 @@ metadata:
   labels:
     app: {{ .Chart.Name }}
     tier: backend
+    version: {{ .Chart.AppVersion | quote }}
 spec:
   replicas: {{ .Values.replicaCount | default 1 }}
   selector:
@@ -16,7 +17,20 @@ spec:
       labels:
         app: {{ .Chart.Name }}
         tier: backend
+        version: {{ .Chart.AppVersion | quote }}
     spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -25,23 +39,38 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-config
           env:
-            # Inject air-gapped configuration
-            - name: AIRGAP_MODE
-              value: "true"
-            - name: QDRANT_URL
-              value: {{ .Values.config.qdrant_url | quote }}
-            - name: NEO4J_URI
-              value: {{ .Values.config.neo4j_uri | quote }}
-            - name: REDIS_URL
-              value: {{ .Values.config.redis_url | quote }}
-            - name: RAY_CLUSTER_URL
-              value: {{ .Values.config.ray_cluster_url | quote }}
-            {{- if .Values.env }}
-            {{- range $key, $val := .Values.env }}
-            - name: {{ $key }}
-              value: {{ $val | quote }}
-            {{- end }}
-            {{- end }}
+            - name: AIRGAP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: db-password
+            - name: AIRGAP_NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: neo4j-password
+            - name: API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: api-keys
+            - name: AUDITOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: auditor-api-key
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: redis-password
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

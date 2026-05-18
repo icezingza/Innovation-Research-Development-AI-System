@@ -1,6 +1,16 @@
 apiVersion: v2
-name: namonexus
-description: A Helm chart for NamoNexus Autonomous Scientific Intelligence System (Air-Gapped Sovereign Edition)
+name: ird-ai
+description: >
+  IRD-AI OS — Cognitive Research Runtime (Air-Gapped Sovereign Edition).
+  Deploys the full inference stack: API, PostgreSQL, Redis, Qdrant, Neo4j, Ollama.
+  Zero external-network dependencies once images are loaded into the cluster registry.
 type: application
-version: 0.9.0
-appVersion: "0.9.0"
+version: 5.0.0
+appVersion: "v5.0.0"
+keywords:
+  - cognitive-runtime
+  - air-gapped
+  - research-automation
+home: https://github.com/ird-ai/ird-ai-os
+maintainers:
+  - name: IRD-AI Platform Team

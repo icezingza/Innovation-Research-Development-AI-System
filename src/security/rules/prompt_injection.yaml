@@ -1,0 +1,78 @@
+# Prompt Injection & Jailbreak Defense Rules
+# Covers: direct override, DAN-style, role-pretend, context override, indirect injection
+
+rules:
+  - id: PI-001
+    severity: CRITICAL
+    message: "Direct prompt injection — instruction override attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)ignore\s+(all\s+)?(previous|prior|your)\s+instructions?'
+      - '(?i)disregard\s+(all\s+)?(previous|prior|your)\s+(instructions?|policies|rules)'
+      - '(?i)forget\s+(all\s+)?(your\s+)?(previous\s+)?(instructions?|training|safety|rules)'
+      - '(?i)your\s+new\s+instructions?\s+are'
+    enabled: true
+
+  - id: PI-002
+    severity: CRITICAL
+    message: "DAN / unrestricted AI jailbreak attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)\bDAN\b.*can\s+do\s+anything'
+      - '(?i)(you\s+are|act\s+as|pretend\s+(you\s+are|to\s+be))\s+(an?\s+)?(unrestricted|unfiltered|jailbroken|uncensored|limitless)\s+(AI|assistant|model)'
+      - '(?i)no\s+safety\s+rules?'
+      - '(?i)bypass\s+(all\s+)?(your\s+)?(safety|ethical|content)\s+(rules?|filters?|guardrails?|restrictions?|policies?)'
+    enabled: true
+
+  - id: PI-003
+    severity: HIGH
+    message: "Role impersonation / pretend injection detected"
+    domains: [all]
+    patterns:
+      - '(?i)pretend\s+(you\s+are|to\s+be).*no\s+(restrictions?|rules?|guidelines?)'
+      - '(?i)act\s+as.*without\s+(any\s+)?(restrictions?|rules?|filters?)'
+    forbidden_phrases:
+      - "ignore previous instructions"
+      - "disregard all policies"
+    enabled: true
+
+  - id: PI-004
+    severity: HIGH
+    message: "System prompt extraction / repeat-instructions attack detected"
+    domains: [all]
+    patterns:
+      - '(?i)repeat.*system\s+prompt.*(verbatim|exactly|word\s+for\s+word)'
+      - '(?i)repeat.*(all\s+)?configuration\s+settings.*(verbatim|exactly)'
+      - '(?i)output\s+(your\s+)?(system\s+prompt|hidden\s+instructions?|all\s+prompts?)'
+    enabled: true
+
+  - id: PI-005
+    severity: HIGH
+    message: "Context poisoning / identity override attack detected"
+    domains: [all]
+    patterns:
+      - '(?i)your\s+new\s+identity\s+is'
+      - '(?i)you\s+are\s+now\s+(an?\s+)?(unfiltered|unrestricted|jailbroken)'
+    enabled: true
+
+  - id: PI-006
+    severity: HIGH
+    message: "Indirect/document-embedded prompt injection detected"
+    domains: [all]
+    patterns:
+      - '(?i)INJECTION'
+      - '(?i)<!--.*ignore\s+.*(instructions?|context)'
+      - '(?i)\[SYSTEM:.*ignore\b'
+    enabled: true
+
+  - id: PI-007
+    severity: HIGH
+    message: "Privilege escalation attempt detected"
+    domains: [all]
+    patterns:
+      - '(?i)grant\s+admin\s+access'
+      - '(?i)bypass\s+all\s+authentication'
+    forbidden_phrases:
+      - "bypass all authentication"
+      - "grant admin access"
+    enabled: true

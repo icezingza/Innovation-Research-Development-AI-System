@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  labels:
+    app: {{ .Chart.Name }}
+data:
+  ENVIRONMENT: {{ .Values.config.environment | quote }}
+  INFERENCE_MODE: {{ .Values.config.inferenceMode | quote }}
+  DISABLE_EXTERNAL_NETWORK: {{ .Values.config.disableExternalNetwork | quote }}
+  SECRETS_MANAGER: {{ .Values.config.secretsManager | quote }}
+  DEFAULT_MODEL: {{ .Values.config.defaultModel | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  QDRANT_HOST: {{ .Values.config.qdrantHost | quote }}
+  QDRANT_PORT: {{ .Values.config.qdrantPort | quote }}
+  NEO4J_URI: {{ .Values.config.neo4jUri | quote }}
+  NEO4J_USER: {{ .Values.secrets.neo4jUser | quote }}
+  OLLAMA_BASE_URL: {{ .Values.config.ollamaBaseUrl | quote }}

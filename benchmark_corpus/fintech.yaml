@@ -1,0 +1,38 @@
+domain: fintech
+label: "Financial Intelligence"
+tasks:
+  - id: ft-001
+    description: "Extract regulatory obligations from Basel III capital adequacy framework"
+    query: "Analyze Basel III requirements and extract all capital adequacy obligations, tier-1 capital ratios, leverage ratios, and compliance deadlines for ASEAN financial institutions"
+    baseline_hours: 72
+    estimated_ai_minutes: 8
+    speedup_label: "vs. 3-analyst team"
+    kpi_category: "Regulatory Intelligence"
+    baseline_source: "McKinsey Global Banking Report 2023"
+
+  - id: ft-002
+    description: "Black Swan signal detection across 500 market news articles"
+    query: "Scan financial news corpus for systemic risk signals, tail-risk indicators, and early warning patterns that precede market dislocations"
+    baseline_hours: 48
+    estimated_ai_minutes: 3
+    speedup_label: "vs. quantitative analyst"
+    kpi_category: "Risk Intelligence"
+    baseline_source: "Bloomberg Intelligence Research Benchmark 2024"
+
+  - id: ft-003
+    description: "Regulatory change impact assessment for SEC/BoT policy update"
+    query: "Generate comprehensive impact assessment for new SEC margin requirement changes: affected instruments, capital buffer adjustments, and operational compliance timeline"
+    baseline_hours: 120
+    estimated_ai_minutes: 12
+    speedup_label: "vs. compliance team (5 days)"
+    kpi_category: "Compliance Automation"
+    baseline_source: "Deloitte Regulatory Benchmark Study 2023"
+
+  - id: ft-004
+    description: "Counterparty credit risk synthesis from 200 earnings reports"
+    query: "Extract and synthesize counterparty credit risk metrics, covenant breach indicators, and liquidity stress signals from quarterly earnings disclosures"
+    baseline_hours: 80
+    estimated_ai_minutes: 6
+    speedup_label: "vs. credit risk team"
+    kpi_category: "Credit Intelligence"
+    baseline_source: "PwC Credit Risk Operations Survey 2024"
