@@ -17,6 +17,7 @@ from src.api.routes.audit_sdk import router as audit_sdk_router
 from src.api.routes.security import router as security_router
 from src.api.routes.vertical_swarms import router as vertical_swarms_router
 from src.api.routes.telemetry import router as telemetry_router
+from src.api.routes.chaos import router as chaos_router
 from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
@@ -120,6 +121,7 @@ def test_app():
     application.include_router(vertical_swarms_router)
     application.include_router(telemetry_router)
     application.include_router(dashboard_router)
+    application.include_router(chaos_router)
 
     async def mock_get_current_user(request: Request):
         payload = {
