@@ -83,3 +83,45 @@ async def test_find_related_passes_depth():
     await graph.find_related(hypothesis_id=hyp_id, max_depth=3)
     _, params = connector.run_query.call_args[0]
     assert params["depth"] == 3
+
+
+@pytest.mark.asyncio
+async def test_store_domain_concept_creates_domain_contains_concept():
+    graph, connector = _make_graph()
+    await graph.store_domain_concept(
+        domain="FinTech",
+        concept="Basel III",
+        properties={"description": "Capital adequacy framework"},
+    )
+    connector.run_query.assert_called_once()
+    cypher, params = connector.run_query.call_args[0]
+    assert "Domain" in cypher
+    assert "Concept" in cypher
+    assert "CONTAINS" in cypher
+    assert params["domain"] == "FinTech"
+    assert params["concept"] == "Basel III"
+    assert params["properties"]["description"] == "Capital adequacy framework"
+
+
+@pytest.mark.asyncio
+async def test_store_domain_concept_defaults_empty_properties():
+    graph, connector = _make_graph()
+    await graph.store_domain_concept(domain="Health", concept="Biomarker")
+    _, params = connector.run_query.call_args[0]
+    assert params["properties"] == {}
+
+
+@pytest.mark.asyncio
+async def test_store_speculative_knowledge_creates_node():
+    graph, connector = _make_graph()
+    await graph.store_speculative_knowledge(
+        node_id="sk-001",
+        source="critique_agent",
+        content="Low coherence detected",
+        confidence=0.65,
+    )
+    connector.run_query.assert_called_once()
+    cypher, params = connector.run_query.call_args[0]
+    assert "SpeculativeKnowledge" in cypher
+    assert params["id"] == "sk-001"
+    assert params["confidence"] == 0.65
