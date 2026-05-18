@@ -15,6 +15,7 @@ from src.agents.synthesis_agent import SynthesisAgent
 from src.api.health import router as health_router
 from src.api.routes.audit_sdk import router as audit_sdk_router
 from src.api.routes.security import router as security_router
+from src.api.routes.vertical_swarms import router as vertical_swarms_router
 from src.api.routes.cognition import router as cognition_router
 from src.api.routes.governance import router as governance_router
 from src.api.routes.intelligence import router as intelligence_router
@@ -114,6 +115,7 @@ def test_app():
     application.include_router(streams_router)
     application.include_router(audit_sdk_router)
     application.include_router(security_router)
+    application.include_router(vertical_swarms_router)
 
     async def mock_get_current_user(request: Request):
         payload = {
