@@ -1,72 +1,43 @@
-# values.airgap.yaml
-# Helm configuration for deploying NamoNexus in an Air-Gapped Kubernetes Environment
+# values.airgap.yaml — Air-Gapped Kubernetes overrides
+# Usage: helm install ird-ai ./k8s/namonexus -f k8s/namonexus/values.airgap.yaml \
+#          --set secrets.dbPassword=<pw> --set secrets.neo4jPassword=<pw> \
+#          --set secrets.apiKeys=<key> --set secrets.auditorApiKey=<key>
 
-global:
-  environment: "airgap"
-  # Disables any features requiring internet access (e.g., GCP integrations, remote telemetry)
-  disableExternalNetwork: true
+replicaCount: 2
 
-replicaCount: 3
 image:
-  # In air-gapped mode, images must be pulled from the local private registry
-  repository: harbor.local/namonexus/api
-  tag: "v5.0.0-sovereign"
+  repository: harbor.local/ird-ai/api   # private registry — no internet needed
+  tag: "0.9.0"
   pullPolicy: IfNotPresent
-  
+
+config:
+  environment: airgap
+  inferenceMode: local
+  disableExternalNetwork: "true"
+  secretsManager: k8s
+  defaultModel: llama3
+
 resources:
   requests:
-    cpu: "1000m"
+    cpu: "1"
     memory: "2Gi"
   limits:
-    cpu: "4000m"
+    cpu: "4"
     memory: "4Gi"
-    
-env:
-  INFERENCE_MODE: "local"
-  DEFAULT_MODEL: "llama3"
-  OLLAMA_BASE_URL: "http://namo-ollama:11434"
-  SECRETS_MANAGER: "local"
-  ENFORCE_THAI_REGULATORY: "true"
 
-inference:
-  ollama:
-    enabled: true
-    image:
-      repository: harbor.local/ollama/ollama
-      tag: "latest"
-    # Pre-loaded models persistence
-    persistence:
-      enabled: true
-      size: 50Gi
-      storageClass: "local-fast"
-    resources:
-      requests:
-        cpu: "4000m"
-        memory: "16Gi"
-        # Requires GPU for latency < 10s
-        nvidia.com/gpu: "1" 
-      limits:
-        nvidia.com/gpu: "1"
-
-# Infrastructure dependencies (Should be deployed in the same private namespace)
-postgresql:
+autoscaling:
   enabled: true
-  architecture: "standalone" # Use replication in true prod
-  auth:
-    database: "cognition"
-    username: "cognitive"
-    # Password provided via local k8s secret
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 65
 
-redis:
-  enabled: true
-  architecture: "standalone"
-
-qdrant:
-  enabled: true
-  persistence:
-    size: 20Gi
-
-neo4j:
-  enabled: true
+persistence:
+  storageClass: "local-fast"
+  postgres:
+    size: 50Gi
+  qdrant:
+    size: 100Gi
   neo4j:
-    password: "sovereign_graph_password"
+    size: 20Gi
+  ollama:
+    size: 200Gi    # sufficient for llama3 + mistral pre-loaded

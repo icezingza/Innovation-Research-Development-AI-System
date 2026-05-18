@@ -1,7 +1,10 @@
+# values.yaml — default values for ird-ai Helm chart
+# Override per environment via -f values.airgap.yaml or --set key=value
+
 replicaCount: 1
 
 image:
-  repository: namonexus-api
+  repository: ird-ai-api
   pullPolicy: IfNotPresent
   tag: "0.9.0"
 
@@ -9,17 +12,76 @@ service:
   type: ClusterIP
   port: 8000
 
+# ── API configuration ────────────────────────────────────────────────────────
 config:
-  # Air-Gapped Configurations
-  qdrant_url: "http://qdrant:6333"
-  neo4j_uri: "bolt://neo4j:7687"
-  redis_url: "redis://redis:6379/0"
-  ray_cluster_url: "http://ray-head:8265"
+  environment: production
+  inferenceMode: local
+  disableExternalNetwork: "false"
+  secretsManager: k8s        # k8s | local | gcp
+  defaultModel: llama3
 
+  # Service endpoints (internal cluster DNS)
+  postgresUrl: "postgresql+asyncpg://cognitive:$(AIRGAP_DB_PASSWORD)@postgres-svc/cognition"
+  redisUrl: "redis://redis-svc:6379"
+  qdrantHost: "qdrant-svc"
+  qdrantPort: "6333"
+  neo4jUri: "bolt://neo4j-svc:7687"
+  ollamaBaseUrl: "http://ollama-svc:11434"
+
+# ── Secrets (values provided at deploy time, never committed) ────────────────
+secrets:
+  dbPassword: ""          # REQUIRED: set via --set secrets.dbPassword=...
+  neo4jUser: neo4j
+  neo4jPassword: ""       # REQUIRED
+  apiKeys: ""             # REQUIRED: comma-separated API key list
+  auditorApiKey: ""       # REQUIRED: separate read-only auditor credential
+
+# ── Resource limits ──────────────────────────────────────────────────────────
 resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
   limits:
     cpu: "2"
-    memory: "4Gi"
-  requests:
-    cpu: "1"
     memory: "2Gi"
+
+# ── Probes ───────────────────────────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 3
+
+# ── Autoscaling ──────────────────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# ── Storage ──────────────────────────────────────────────────────────────────
+persistence:
+  storageClass: ""   # default cluster StorageClass
+  postgres:
+    size: 10Gi
+  qdrant:
+    size: 20Gi
+  neo4j:
+    size: 10Gi
+  ollama:
+    size: 50Gi
+
+# ── Node selection ────────────────────────────────────────────────────────────
+nodeSelector: {}
+tolerations: []
+affinity: {}

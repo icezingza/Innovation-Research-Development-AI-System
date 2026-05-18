@@ -21,6 +21,7 @@ from src.api.routes.tenants import router as tenants_router
 from src.api.routes.benchmarks import router as benchmarks_router
 from src.api.routes.experiments import router as experiments_router
 from src.api.routes.autonomy import router as autonomy_router
+from src.api.routes.audit_sdk import router as audit_sdk_router
 
 # swarms_router: Phase 4 swarm templates (incomplete - missing src.database module)
 # Temporarily disabled until swarms.models migrates to src.memory.schema.Base
@@ -79,6 +80,7 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.include_router(experiments_router)
     app.include_router(benchmarks_router)
     app.include_router(autonomy_router)
+    app.include_router(audit_sdk_router)
     if _SWARMS_AVAILABLE:
         app.include_router(swarms_router)
 
