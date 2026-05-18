@@ -1,7 +1,7 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -143,7 +143,7 @@ async def get_research_task(
 @router.get("/tasks/{task_id}/trace")
 async def get_task_trace(
     task_id: str,
-    format: str = "json",
+    export_format: Literal["json", "html"] = Query(default="json"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
@@ -221,10 +221,14 @@ async def get_task_trace(
     events.sort(key=lambda x: x["timestamp"])
 
     exporter = AuditTrailExporter()
-    if format == "html":
+    if export_format == "html":
         html = exporter.export_html(task_id=task_id, events=events)
         return HTMLResponse(content=html)
-    return exporter.export_json(task_id=task_id, events=events)
+    return exporter.export_json(
+        task_id=task_id,
+        events=events,
+        metadata={"question": task.question, "status": task.status},
+    )
 
 
 def _resolve_tenant_id(request: Request) -> str:
