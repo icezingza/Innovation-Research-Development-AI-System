@@ -1,0 +1,6 @@
+apiVersion: v2
+name: namonexus
+description: A Helm chart for NamoNexus Autonomous Scientific Intelligence System (Air-Gapped Sovereign Edition)
+type: application
+version: 0.9.0
+appVersion: "0.9.0"

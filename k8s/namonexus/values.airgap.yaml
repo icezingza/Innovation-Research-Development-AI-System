@@ -6,28 +6,27 @@ global:
   # Disables any features requiring internet access (e.g., GCP integrations, remote telemetry)
   disableExternalNetwork: true
 
-api:
-  replicaCount: 3
-  image:
-    # In air-gapped mode, images must be pulled from the local private registry
-    repository: harbor.local/namonexus/api
-    tag: "v5.0.0-sovereign"
-    pullPolicy: IfNotPresent
+replicaCount: 3
+image:
+  # In air-gapped mode, images must be pulled from the local private registry
+  repository: harbor.local/namonexus/api
+  tag: "v5.0.0-sovereign"
+  pullPolicy: IfNotPresent
   
-  resources:
-    requests:
-      cpu: "1000m"
-      memory: "2Gi"
-    limits:
-      cpu: "4000m"
-      memory: "4Gi"
-      
-  env:
-    INFERENCE_MODE: "local"
-    DEFAULT_MODEL: "llama3"
-    OLLAMA_BASE_URL: "http://namo-ollama:11434"
-    SECRETS_MANAGER: "local"
-    ENFORCE_THAI_REGULATORY: "true"
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "4000m"
+    memory: "4Gi"
+    
+env:
+  INFERENCE_MODE: "local"
+  DEFAULT_MODEL: "llama3"
+  OLLAMA_BASE_URL: "http://namo-ollama:11434"
+  SECRETS_MANAGER: "local"
+  ENFORCE_THAI_REGULATORY: "true"
 
 inference:
   ollama:

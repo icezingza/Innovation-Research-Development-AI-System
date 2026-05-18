@@ -36,11 +36,21 @@ def create_app(lifespan_override=None) -> FastAPI:
     from src.security.rate_limit_middleware import RateLimitMiddleware
     from src.tenants.middleware import TenantMiddleware
     from src.tenants.quota_middleware import QuotaMiddleware
+    from fastapi.middleware.cors import CORSMiddleware
 
     app = FastAPI(
         title="Cognitive Research Runtime",
         version="0.9.0",
         lifespan=lifespan_override or lifespan,
+    )
+
+    # CORS for local HTML testing
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all for local testing
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Middleware stack (last added = first executed):

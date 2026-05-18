@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from src.inference.inference_router import InferenceRouter
+from src.inference.router import InferenceRouter
 from src.inference.base_provider import CompletionRequest
 
 logger = logging.getLogger(__name__)

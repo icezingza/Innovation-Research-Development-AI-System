@@ -34,17 +34,23 @@ if os.path.exists("cognition_dev.db"):
         print(f"  [{YELLOW}WARN{RESET}] Could not remove cognition_dev.db (it might be locked): {e}")
 
 # 1. Start the API Server in the background and pipe output to a log file
-print(f"\n{BOLD}[Step 1/7]{RESET} Starting FastAPI server in background on port 8099...")
-server_log = open("server_sim.log", "w", encoding="utf-8")
-server_process = subprocess.Popen(
-    [sys.executable, "-m", "uvicorn", "src.api.main:app", "--port", "8099"],
-    stdout=server_log,
-    stderr=server_log,
-)
-
-# Wait for server to boot
-print("Waiting 4 seconds for uvicorn to initialize and bind port...")
-time.sleep(4)
+print(f"\n{BOLD}[Step 1/7]{RESET} Checking if FastAPI server is already running on port 8099...")
+server_process = None
+try:
+    health_resp = requests.get(f"{BASE}/health", timeout=2)
+    if health_resp.status_code == 200:
+        print(f"  [{GREEN}INFO{RESET}] Detected existing server running on port 8099. Reusing it.")
+except Exception:
+    print(f"Starting FastAPI server in background on port 8099...")
+    server_log = open("server_sim.log", "w", encoding="utf-8")
+    server_process = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--port", "8099"],
+        stdout=server_log,
+        stderr=server_log,
+    )
+    # Wait for server to boot
+    print("Waiting 6 seconds for uvicorn to initialize and bind port...")
+    time.sleep(6)
 
 # Verify server is alive
 try:
@@ -53,11 +59,13 @@ try:
         print(f"  [{GREEN}PASS{RESET}] Server is healthy and responding to /health endpoint!")
     else:
         print(f"  [{RED}FAIL{RESET}] Server health check returned status: {health_resp.status_code}")
-        server_process.terminate()
+        if server_process:
+            server_process.terminate()
         sys.exit(1)
 except Exception as e:
     print(f"  [{RED}FAIL{RESET}] Cannot connect to server at {BASE}: {e}")
-    server_process.terminate()
+    if server_process:
+        server_process.terminate()
     sys.exit(1)
 
 # 2. Register Tenant & Admin
@@ -205,11 +213,14 @@ except Exception as e:
     print(f"  [{RED}FAIL{RESET}] Error during FinOps test: {e}")
 
 # 7. Clean Shutdown
-print(f"\n{BOLD}[Step 7/7]{RESET} Shutting down live API server process...")
-server_process.terminate()
-server_process.wait()
-server_log.close()
-print(f"  [{GREEN}PASS{RESET}] API Server shut down cleanly. Port 8099 released.")
+if server_process:
+    print(f"\n{BOLD}[Step 7/7]{RESET} Shutting down live API server process...")
+    server_process.terminate()
+    server_process.wait()
+    server_log.close()
+    print(f"  [{GREEN}PASS{RESET}] API Server shut down cleanly. Port 8099 released.")
+else:
+    print(f"\n{BOLD}[Step 7/7]{RESET} Existing server was used. Leaving it running on port 8099.")
 
 print(f"\n{BOLD}{GREEN}===================================================================={RESET}")
 print(f"{BOLD}{GREEN}   LIVE SIMULATION SUCCESSFUL! NAMO-FORTRESS IS WORKING AS INTENDED!{RESET}")

@@ -2,11 +2,13 @@ import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import StreamingResponse
+from sse_starlette.sse import EventSourceResponse
 
 from src.api.dependencies import get_stream_manager
 from src.runtime.stream_manager import StreamManager
+from src.agents.coordinator import AgentCoordinator
 
 router = APIRouter(prefix="/streams", tags=["streams"])
 logger = logging.getLogger(__name__)
@@ -64,3 +66,31 @@ async def list_active_streams(
     stream_manager: StreamManager = Depends(get_stream_manager),
 ) -> dict:
     return {"active_streams": stream_manager.active_streams()}
+
+
+@router.get("/research")
+async def stream_research(
+    request: Request, query: str, tenant_id: str = "internal_001"
+):
+    """
+    SSE Endpoint สำหรับพ่น 'ก้าวความคิด' (Thinking Loop) ออกสู่หน้าจอแบบ Real-time
+    เชื่อมต่อ Coordinator เข้ากับ API เพื่อให้เห็นการทำงานของ AI แบบวินาทีต่อวินาที
+    """
+    memory = getattr(request.app.state, "memory", None)
+    inference = getattr(request.app.state, "inference", None)
+    embedding = getattr(request.app.state, "embedding", None)
+
+    coordinator = AgentCoordinator(
+        tenant_id=tenant_id,
+        memory=memory,
+        inference=inference,
+        embedding=embedding,
+    )
+
+    async def event_generator():
+        async for message in coordinator.coordinate_research(query):
+            if await request.is_disconnected():
+                break
+            yield {"data": message}
+
+    return EventSourceResponse(event_generator())
