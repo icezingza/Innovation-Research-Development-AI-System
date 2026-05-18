@@ -43,11 +43,11 @@ from src.runtime.worker_pool import AsyncWorkerPool
 from src.security.api_keys import APIKeyManager
 from src.security.rate_limiter import RateLimiter
 from src.security.redis_rate_limiter import RedisRateLimiter
+from src.telemetry.tracing import configure_tracing
 from src.tenants.quota import QuotaService
 
 logger = logging.getLogger(__name__)
 
-from src.telemetry.tracing import configure_tracing
 configure_tracing()
 
 
