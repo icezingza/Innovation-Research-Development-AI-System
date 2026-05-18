@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from src.security.rls import get_rls_db
 from src.orchestration.cognitive_pipeline import CognitivePipeline
 from src.tenants.context import SYSTEM_TENANT_ID
 from src.security.regulatory_guard import get_regulatory_guard, RegulatoryViolation
+from src.audit.audit_sdk import AuditTrailExporter
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -141,9 +143,10 @@ async def get_research_task(
 @router.get("/tasks/{task_id}/trace")
 async def get_task_trace(
     task_id: str,
+    format: str = "json",
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> Any:
     """Retrieve the auditable trace of a research task.
 
     Shows the reasoning flow: Hypothesis -> Research -> Critique -> Synthesis
@@ -217,12 +220,11 @@ async def get_task_trace(
     # Sort chronologically
     events.sort(key=lambda x: x["timestamp"])
 
-    return {
-        "task_id": task_id,
-        "question": task.question,
-        "status": task.status,
-        "events": events,
-    }
+    exporter = AuditTrailExporter()
+    if format == "html":
+        html = exporter.export_html(task_id=task_id, events=events)
+        return HTMLResponse(content=html)
+    return exporter.export_json(task_id=task_id, events=events)
 
 
 def _resolve_tenant_id(request: Request) -> str:
