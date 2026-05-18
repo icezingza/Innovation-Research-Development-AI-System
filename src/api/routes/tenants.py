@@ -281,6 +281,31 @@ async def get_tenant_finops(
     }
 
 
+@router.get("/{tenant_id}/finops/forecast")
+async def get_finops_forecast(
+    tenant_id: str,
+    periods_ahead: int = 1,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Predict future token usage and cost for a tenant.
+
+    Uses linear regression over recent quota history.
+    Requires admin or owner role.
+    """
+    await RequireRole(["admin", "owner"])(current_user)
+
+    from src.billing.finops_predictor import FinOpsPredictor
+
+    placeholder_history = [10_000, 15_000, 13_000, 18_000, 20_000]
+    predictor = FinOpsPredictor()
+    forecast = predictor.forecast(placeholder_history, periods_ahead=periods_ahead)
+    return {
+        "tenant_id": tenant_id,
+        "forecast": forecast.model_dump(),
+        "note": "history is placeholder; integrate quota_service for production data",
+    }
+
+
 @router.get("/{tenant_id}/roi", response_model=ROIResponse)
 async def get_tenant_roi(
     tenant_id: str,
