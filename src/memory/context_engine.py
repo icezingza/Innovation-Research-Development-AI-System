@@ -1,7 +1,10 @@
+import asyncio
 import logging
 from typing import Any
 
 from pydantic import BaseModel
+
+from src.memory.corpus_ingestion import SPECIALIZED_CORPUS_COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +16,7 @@ class ContextPacket(BaseModel):
 
     question: str
     similar_hypotheses: list[dict]
+    specialized_results: list[dict] = []
     continuity_score: float  # 0.0 = no prior context, 1.0 = rich context
 
 
@@ -20,8 +24,8 @@ class ContextEngine:
     """Builds semantic context for agents by querying vector memory.
 
     When Qdrant and an embedding provider are available, the agent receives
-    semantically similar past hypotheses so reasoning can accumulate across
-    tasks instead of restarting cold each time.
+    semantically similar past hypotheses and specialized corpus chunks so
+    reasoning can accumulate across tasks and domain knowledge.
     """
 
     def __init__(self, vector_store: Any, embedding_provider: Any) -> None:
@@ -35,15 +39,26 @@ class ContextEngine:
             )
         try:
             embedding = await self._embedding.embed(question)
-            results = await self._vector_store.search_similar(
+            
+            # Parallel search for hypotheses and specialized knowledge
+            h_task = self._vector_store.search_similar(
                 query_embedding=embedding,
                 collection=RESEARCH_COLLECTION,
                 limit=limit,
             )
-            score = min(1.0, len(results) / max(limit, 1))
+            s_task = self._vector_store.search_similar(
+                query_embedding=embedding,
+                collection=SPECIALIZED_CORPUS_COLLECTION,
+                limit=limit,
+            )
+            
+            h_results, s_results = await asyncio.gather(h_task, s_task)
+
+            score = min(1.0, (len(h_results) + len(s_results)) / max(limit * 2, 1))
             return ContextPacket(
                 question=question,
-                similar_hypotheses=[r["payload"] for r in results if r.get("payload")],
+                similar_hypotheses=[r["payload"] for r in h_results if r.get("payload")],
+                specialized_results=[r["payload"] for r in s_results if r.get("payload")],
                 continuity_score=round(score, 2),
             )
         except Exception as exc:

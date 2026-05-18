@@ -25,6 +25,7 @@ from src.api.routes.security import router as security_router
 from src.api.routes.vertical_swarms import router as vertical_swarms_router
 from src.api.routes.telemetry import router as telemetry_router
 from src.api.routes.autonomy import router as autonomy_router
+from src.api.routes.evolution import router as evolution_router
 from src.api.routes.chaos import router as chaos_router
 
 # swarms_router: Phase 4 swarm templates (incomplete - missing src.database module)
@@ -90,6 +91,7 @@ def create_app(lifespan_override=None) -> FastAPI:
     app.include_router(vertical_swarms_router)
     app.include_router(telemetry_router)
     app.include_router(autonomy_router)
+    app.include_router(evolution_router)
     app.include_router(chaos_router)
     if _SWARMS_AVAILABLE:
         app.include_router(swarms_router)

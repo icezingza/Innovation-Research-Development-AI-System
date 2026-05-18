@@ -5,8 +5,8 @@ description: >
   Deploys the full inference stack: API, PostgreSQL, Redis, Qdrant, Neo4j, Ollama.
   Zero external-network dependencies once images are loaded into the cluster registry.
 type: application
-version: 0.9.0
-appVersion: "0.9.0"
+version: 5.0.0
+appVersion: "v5.0.0"
 keywords:
   - cognitive-runtime
   - air-gapped

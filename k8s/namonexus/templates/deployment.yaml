@@ -63,6 +63,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Chart.Name }}-secrets
                   key: auditor-api-key
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: redis-password
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:

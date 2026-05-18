@@ -247,6 +247,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         quality_tracker=quality_tracker,
         workflow_config=workflow_config,
     )
+    
+    # --- self-evolution layer ---
+    from core.meta_reasoning_engine import MetaReasoningEngine
+    from core.adaptive_learning_engine import AdaptiveLearningEngine
+    meta_reasoning = MetaReasoningEngine(inference_router=inference_router if inference_router.enabled else None)
+    adaptive_learning = AdaptiveLearningEngine(quality_tracker=quality_tracker, quota_service=quota_service)
+    
     research_agenda = ResearchAgenda(research_memory=research_memory)
     session_manager = CognitiveSessionManager(
         redis_client=redis_store.client if redis_ok else None
@@ -272,38 +279,40 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await worker_pool.start()
 
     # --- wire app state ---
-    app.state.memory = memory
-    app.state.state_manager = state_manager
-    app.state.pipeline = pipeline
-    app.state.db_session = session_factory
-    app.state.inference = inference_router
-    app.state.embedding = embedding_provider
-    app.state.reasoning_trace = reasoning_trace
-    app.state.recursive_loop = recursive_loop
-    app.state.debate_runtime = debate_runtime
-    app.state.research_workflow = research_workflow
-    app.state.scheduler = scheduler
-    app.state.worker_pool = worker_pool
-    app.state.stream_manager = stream_manager
-    app.state.audit_log = audit_log
-    app.state.event_bus = event_bus
-    app.state.coordinator = coordinator
-    app.state.research_memory = research_memory
-    app.state.quality_tracker = quality_tracker
-    app.state.key_manager = key_manager
-    app.state.rate_limiter = rate_limiter
-    app.state.quota_service = quota_service
-    app.state.redis_rate_limiter = redis_rate_limiter
-    app.state.service_errors = errors
-    app.state.settings = settings
-    app.state.adaptive_config = adaptive_config
-    app.state.research_agenda = research_agenda
-    app.state.session_manager = session_manager
-    app.state.agent_spawner = agent_spawner
-    app.state.state_reconciler = state_reconciler
-    app.state.ab_testing = ab_testing
-    app.state.feedback_collector = feedback_collector
-    app.state.feedback_aggregator = feedback_aggregator
+    setattr(app.state, "memory", memory)
+    setattr(app.state, "state_manager", state_manager)
+    setattr(app.state, "pipeline", pipeline)
+    setattr(app.state, "db_session", session_factory)
+    setattr(app.state, "inference", inference_router)
+    setattr(app.state, "embedding", embedding_provider)
+    setattr(app.state, "reasoning_trace", reasoning_trace)
+    setattr(app.state, "recursive_loop", recursive_loop)
+    setattr(app.state, "debate_runtime", debate_runtime)
+    setattr(app.state, "research_workflow", research_workflow)
+    setattr(app.state, "scheduler", scheduler)
+    setattr(app.state, "worker_pool", worker_pool)
+    setattr(app.state, "stream_manager", stream_manager)
+    setattr(app.state, "audit_log", audit_log)
+    setattr(app.state, "event_bus", event_bus)
+    setattr(app.state, "coordinator", coordinator)
+    setattr(app.state, "research_memory", research_memory)
+    setattr(app.state, "quality_tracker", quality_tracker)
+    setattr(app.state, "key_manager", key_manager)
+    setattr(app.state, "rate_limiter", rate_limiter)
+    setattr(app.state, "quota_service", quota_service)
+    setattr(app.state, "redis_rate_limiter", redis_rate_limiter)
+    setattr(app.state, "service_errors", errors)
+    setattr(app.state, "settings", settings)
+    setattr(app.state, "adaptive_config", adaptive_config)
+    setattr(app.state, "research_agenda", research_agenda)
+    setattr(app.state, "session_manager", session_manager)
+    setattr(app.state, "agent_spawner", agent_spawner)
+    setattr(app.state, "meta_reasoning", meta_reasoning)
+    setattr(app.state, "adaptive_learning", adaptive_learning)
+    setattr(app.state, "state_reconciler", state_reconciler)
+    setattr(app.state, "ab_testing", ab_testing)
+    setattr(app.state, "feedback_collector", feedback_collector)
+    setattr(app.state, "feedback_aggregator", feedback_aggregator)
 
     if errors:
         logger.warning("runtime_started_degraded", extra={"unavailable": list(errors)})
