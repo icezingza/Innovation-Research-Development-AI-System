@@ -1,4 +1,5 @@
 """Dashboard HTML pages — served as static files (templates render client-side via JS)."""
+
 from pathlib import Path
 
 from fastapi import APIRouter

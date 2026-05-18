@@ -31,9 +31,7 @@ class StreamManager:
             try:
                 q.put_nowait(event)
             except asyncio.QueueFull:
-                logger.warning(
-                    "stream_queue_full", extra={"stream_id": stream_id}
-                )
+                logger.warning("stream_queue_full", extra={"stream_id": stream_id})
 
     async def close(self, stream_id: str) -> None:
         """Signal all subscribers for stream_id that the stream is done."""

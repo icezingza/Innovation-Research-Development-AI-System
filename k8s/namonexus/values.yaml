@@ -1,0 +1,25 @@
+replicaCount: 1
+
+image:
+  repository: namonexus-api
+  pullPolicy: IfNotPresent
+  tag: "0.9.0"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+config:
+  # Air-Gapped Configurations
+  qdrant_url: "http://qdrant:6333"
+  neo4j_uri: "bolt://neo4j:7687"
+  redis_url: "redis://redis:6379/0"
+  ray_cluster_url: "http://ray-head:8265"
+
+resources:
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+  requests:
+    cpu: "1"
+    memory: "2Gi"

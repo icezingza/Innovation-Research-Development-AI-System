@@ -6,6 +6,7 @@ Endpoints:
   GET    /tenants/{tenant_id}/finops  → FinOps metrics (admin or finance only)
   PATCH  /tenants/{tenant_id}/tier  → upgrade/downgrade tier (API-key gated)
 """
+
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -29,6 +30,7 @@ VALID_TIERS: set[str] = {"free", "pro", "enterprise"}
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
+
 
 class CreateTenantRequest(BaseModel):
     name: str
@@ -67,6 +69,7 @@ class FinOpsResponse(BaseModel):
     estimated_cost: float
     budget_depletion_forecast: str | None
     recommendation: str
+    edge_hardware_depreciation: float | None = None
 
 
 class ROIResponse(BaseModel):
@@ -75,12 +78,15 @@ class ROIResponse(BaseModel):
     hours_saved: int
     token_cost_cloud_equivalent: float
     actual_token_cost: float
+    edge_hardware_depreciation_cost: float
+    total_on_premise_cost: float
     savings_percentage: float
     tasks_completed: int
     avg_time_per_task_seconds: float
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _require_api_key(request: Request) -> None:
     """Gate provisioning endpoints behind the existing API key check.
@@ -93,10 +99,13 @@ def _require_api_key(request: Request) -> None:
         return  # dev mode — no keys configured
     raw_key = request.headers.get("X-API-Key", "")
     if not key_manager.validate(raw_key):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid API key")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid API key"
+        )
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TenantResponse)
 async def create_tenant(
@@ -142,7 +151,11 @@ async def create_tenant(
 
     logger.info(
         "tenant_created",
-        extra={"tenant_id": str(tenant.id), "domain": tenant.domain, "tier": tenant.tier},
+        extra={
+            "tenant_id": str(tenant.id),
+            "domain": tenant.domain,
+            "tier": tenant.tier,
+        },
     )
 
     return {
@@ -170,14 +183,27 @@ async def get_tenant(
     raw_key = request.headers.get("X-API-Key", "")
     is_platform_admin = key_manager is not None and key_manager.validate(raw_key)
 
-    caller_tenant_id = current_user.get("tenant_id", "")
-    if not is_platform_admin and caller_tenant_id != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    import uuid
 
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if not is_platform_admin and caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid))
     tenant = result.scalars().first()
     if not tenant:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
 
     return {
         "id": str(tenant.id),
@@ -200,14 +226,25 @@ async def get_tenant_finops(
     Shows quota usage, estimated cost, and budget depletion forecast.
     Requires admin or finance role.
     """
-    RequireRole(["admin", "finance", "owner"])(current_user)
+    await RequireRole(["admin", "finance", "owner"])(current_user)
+
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
 
     # Tenant isolation: users can only access their own tenant's finops
     caller_tenant_id = current_user.get("tenant_id", "")
-    if caller_tenant_id != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
 
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid))
     tenant = result.scalars().first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -224,6 +261,7 @@ async def get_tenant_finops(
     # Cost estimation: $0.01 per API call (configurable)
     cost_per_unit = 0.01
     estimated_cost = round(used * cost_per_unit, 2)
+    edge_hardware_depreciation = 100.0  # Assumed flat rate monthly allocation
 
     # Budget depletion forecast using linear extrapolation
     now = datetime.now(UTC)
@@ -236,6 +274,8 @@ async def get_tenant_finops(
     if daily_avg > 0 and used < limit:
         remaining = limit - used
         days_left = remaining / daily_avg
+        # Cap days_left at 3650 days (10 years) to prevent python datetime OverflowError
+        days_left = min(days_left, 3650.0)
         depletion_time = now + timedelta(days=days_left)
 
     # Generate recommendation based on usage
@@ -246,13 +286,56 @@ async def get_tenant_finops(
         recommendation = "Consider upgrading to Enterprise plan"
 
     return {
-        "tenant_id": tenant_id,
+        "tenant_id": str(tenant_uuid),
         "current_billing_period": now.strftime("%Y-%m"),
         "quota_limit": limit,
         "quota_used": used,
         "estimated_cost": estimated_cost,
-        "budget_depletion_forecast": depletion_time.isoformat() if depletion_time else None,
-        "recommendation": recommendation
+        "budget_depletion_forecast": depletion_time.isoformat()
+        if depletion_time
+        else None,
+        "recommendation": recommendation,
+        "edge_hardware_depreciation": edge_hardware_depreciation,
+    }
+
+
+@router.get("/{tenant_id}/finops/forecast")
+async def get_finops_forecast(
+    tenant_id: str,
+    periods_ahead: int = 1,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Predict future token usage and cost for a tenant.
+
+    Uses linear regression over recent quota history.
+    Requires admin or owner role.
+    """
+    await RequireRole(["admin", "owner"])(current_user)
+
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    from src.billing.finops_predictor import FinOpsPredictor
+
+    placeholder_history = [10_000, 15_000, 13_000, 18_000, 20_000]
+    predictor = FinOpsPredictor()
+    forecast = predictor.forecast(placeholder_history, periods_ahead=periods_ahead)
+    return {
+        "tenant_id": str(tenant_uuid),
+        "forecast": forecast.model_dump(),
+        "note": "history is placeholder; integrate quota_service for production data",
     }
 
 
@@ -268,48 +351,81 @@ async def get_tenant_roi(
     Shows hours saved, cost comparison vs. public cloud, and throughput metrics.
     Requires admin role.
     """
-    RequireRole(["admin", "finance", "auditor"])(current_user)
+    await RequireRole(["admin", "finance", "auditor"])(current_user)
+
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
+    # Tenant isolation
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
 
     # --- ดึงข้อมูลการใช้งานจาก DB (เดือนปัจจุบัน) ---
     now = datetime.utcnow()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
 
     # นับจำนวน task ที่สร้างในเดือนนี้
-    task_count_query = select(func.count()).select_from(ResearchTask).where(
-        ResearchTask.tenant_id == tenant_id,
-        ResearchTask.created_at >= start_of_month
+    task_count_query = (
+        select(func.count())
+        .select_from(ResearchTask)
+        .where(
+            ResearchTask.tenant_id == tenant_uuid,
+            ResearchTask.created_at >= start_of_month,
+        )
     )
     task_count = await db.scalar(task_count_query) or 0
 
     # ดึง usage จาก Redis
     quota_service = request.app.state.quota_service
-    api_calls_used = await quota_service.current_usage(tenant_id)
+    api_calls_used = await quota_service.current_usage(str(tenant_uuid))
 
     # Constants
     AVG_HUMAN_HOURS_PER_TASK = 2.0
     CLOUD_COST_PER_1K_TOKENS = 0.03
     AVG_TOKENS_PER_TASK = 4000
     COST_PER_API_CALL = 0.01
+    EDGE_DEPRECIATION_COST = (
+        100.0  # Fixed monthly edge hardware depreciation per tenant
+    )
 
     # --- คำนวณ ROI ---
     hours_saved = task_count * AVG_HUMAN_HOURS_PER_TASK
-    cloud_cost = (api_calls_used * AVG_TOKENS_PER_TASK / 1000) * CLOUD_COST_PER_1K_TOKENS
+    cloud_cost = (
+        api_calls_used * AVG_TOKENS_PER_TASK / 1000
+    ) * CLOUD_COST_PER_1K_TOKENS
     actual_cost = api_calls_used * COST_PER_API_CALL
-    
-    savings_percentage = round(((cloud_cost - actual_cost) / cloud_cost) * 100, 2) if cloud_cost > 0 else 0.0
+    total_on_premise_cost = actual_cost + EDGE_DEPRECIATION_COST
+
+    savings_percentage = (
+        round(((cloud_cost - total_on_premise_cost) / cloud_cost) * 100, 2)
+        if cloud_cost > 0
+        else 0.0
+    )
 
     return {
-        "tenant_id": tenant_id,
+        "tenant_id": str(tenant_uuid),
         "period": now.strftime("%Y-%m"),
         "tasks_completed": task_count,
         "api_calls_used": api_calls_used,
         "hours_saved": hours_saved,
         "token_cost_cloud_equivalent": round(cloud_cost, 2),
         "actual_token_cost": round(actual_cost, 2),
+        "edge_hardware_depreciation_cost": EDGE_DEPRECIATION_COST,
+        "total_on_premise_cost": round(total_on_premise_cost, 2),
         "savings_percentage": savings_percentage,
         "avg_time_per_task_seconds": 45.0,
         "recommendation": (
             "Your AI is saving significant cost vs. public cloud. Consider upgrading tier for more capacity."
-            if savings_percentage > 50 else "Efficiency gains are being tracked."
-        )
+            if savings_percentage > 50
+            else "Efficiency gains are being tracked."
+        ),
     }

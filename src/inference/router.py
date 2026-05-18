@@ -11,6 +11,7 @@ from src.reasoning.reasoning_trace import ReasoningTrace, TraceEntry
 
 logger = logging.getLogger(__name__)
 
+
 class InferenceRouter:
     """Routes inference requests using declarative provider metadata and cost bounding.
 
@@ -39,6 +40,11 @@ class InferenceRouter:
     @property
     def active_provider(self) -> str:
         return self._providers[0].name if self._providers else "none"
+
+    async def close(self) -> None:
+        """Close provider-owned resources such as pooled HTTP clients."""
+        for provider in self._providers:
+            await provider.close()
 
     def _get_providers_by_tier(
         self, tier: Literal["fast", "deep"]
@@ -92,7 +98,38 @@ class InferenceRouter:
                 response: CompletionResponse = await provider.complete(request)
                 elapsed = time.monotonic() - start
 
+                # Increment telemetry counters if tokens were cached/read
+                read_tokens = (
+                    getattr(response, "cache_read_tokens", 0)
+                    or getattr(response, "cached_tokens", 0)
+                    or 0
+                )
+                creation_tokens = getattr(response, "cache_creation_tokens", 0) or 0
+
+                if read_tokens > 0:
+                    try:
+                        from src.telemetry.runtime_metrics import token_cache_reads
+
+                        token_cache_reads.labels(
+                            provider=provider.name, model=response.model
+                        ).inc(read_tokens)
+                    except Exception as err:
+                        logger.warning(f"Failed to increment token_cache_reads: {err}")
+
+                if creation_tokens > 0:
+                    try:
+                        from src.telemetry.runtime_metrics import token_cache_creations
+
+                        token_cache_creations.labels(
+                            provider=provider.name, model=response.model
+                        ).inc(creation_tokens)
+                    except Exception as err:
+                        logger.warning(
+                            f"Failed to increment token_cache_creations: {err}"
+                        )
+
                 # Record successful completion
+
                 if self._trace:
                     success_entry = TraceEntry(
                         operation=f"inference_complete_{tier}",

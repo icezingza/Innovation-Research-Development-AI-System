@@ -51,3 +51,41 @@ async def test_policy_enforcer_denies_empty_sender():
     )
     result = await enforcer.evaluate(msg)
     assert result.decision == PolicyDecision.DENY
+
+
+@pytest.mark.asyncio
+async def test_policy_enforcer_blocks_thai_pdpa_violation():
+    enforcer = PolicyEnforcer()
+    # Thai citizen ID 13 digits
+    msg = _make_message({"text": "บัตรของผมเลขที่ 1234567890123 ครับ"})
+    result = await enforcer.evaluate(msg)
+    assert result.decision == PolicyDecision.DENY
+    assert "Regulatory violation" in result.reason
+    assert "PDPA-001" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_policy_enforcer_blocks_thai_finance_violation():
+    enforcer = PolicyEnforcer()
+    msg = _make_message({"advice": "ผมแนะนำให้ซื้อหุ้นตัวนี้ครับ รับประกันผลตอบแทนสูง"})
+    result = await enforcer.evaluate(msg)
+    assert result.decision == PolicyDecision.DENY
+    assert "Regulatory violation" in result.reason
+    assert "FIN-001" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_policy_enforcer_allows_normal_thai_text():
+    enforcer = PolicyEnforcer()
+    msg = _make_message({"query": "การวิเคราะห์โครงสร้างภาษาบาลีในพระไตรปิฎก"})
+    result = await enforcer.evaluate(msg)
+    assert result.decision == PolicyDecision.ALLOW
+
+
+@pytest.mark.asyncio
+async def test_policy_enforcer_respects_disabled_guard():
+    enforcer = PolicyEnforcer(enable_regulatory_guard=False)
+    # Even if it contains citizen ID, it should allow since regulatory guard is disabled
+    msg = _make_message({"text": "บัตรของผมเลขที่ 1234567890123 ครับ"})
+    result = await enforcer.evaluate(msg)
+    assert result.decision == PolicyDecision.ALLOW

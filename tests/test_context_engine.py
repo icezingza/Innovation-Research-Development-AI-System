@@ -1,4 +1,5 @@
 """Tests for ContextEngine — mocked Qdrant + embedding provider."""
+
 import pytest
 
 from src.inference.embedding_provider import DisabledEmbeddingProvider

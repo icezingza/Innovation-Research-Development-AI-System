@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>IRD-AI Sovereign Dashboard v0.9.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-active-red {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .glass-active-blue {
+            background: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .glass-active-yellow {
+            background: rgba(234, 179, 8, 0.15);
+            border: 1px solid rgba(234, 179, 8, 0.5);
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+        }
+
+        .glass-active-green {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .glass-active-purple {
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+        }
+
+        /* Typewriter fade-in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .log-entry {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white p-8 min-h-screen">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+            IRD-AI Sovereign OS v0.9.0
+        </h1>
+        <p class="text-slate-400 mb-8 font-light tracking-wide">Autonomous Scientific Intelligence - Real-time Industry Swarm</p>
+
+        <!-- Progress Tracking -->
+        <div id="status-container" class="grid grid-cols-5 gap-4 mb-8">
+            <div id="step-0" class="p-4 rounded-xl glass-panel opacity-50 transition-all duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] uppercase font-bold text-red-300">Phase 0</p>
+                    <span id="spin-0" class="hidden relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                </div>
+                <h3 class="font-semibold text-xs">Red Team Guard</h3>
+            </div>
+
+            <div id="step-1" class="p-4 rounded-xl glass-panel opacity-50 transition-all duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] uppercase font-bold text-blue-300">Phase 1</p>
+                    <span id="spin-1" class="hidden relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                </div>
+                <h3 class="font-semibold text-xs">Knowledge Retrieval</h3>
+            </div>
+            
+            <div id="step-2" class="p-4 rounded-xl glass-panel opacity-50 transition-all duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] uppercase font-bold text-yellow-300">Phase 2</p>
+                    <span id="spin-2" class="hidden relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                    </span>
+                </div>
+                <h3 class="font-semibold text-xs">Compliance Check</h3>
+            </div>
+            
+            <div id="step-3" class="p-4 rounded-xl glass-panel opacity-50 transition-all duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] uppercase font-bold text-green-300">Phase 3</p>
+                    <span id="spin-3" class="hidden relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                </div>
+                <h3 class="font-semibold text-xs">Simulation Prep</h3>
+            </div>
+
+            <div id="step-4" class="p-4 rounded-xl glass-panel opacity-50 transition-all duration-500">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] uppercase font-bold text-purple-300">Phase 4</p>
+                    <span id="spin-4" class="hidden relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                    </span>
+                </div>
+                <h3 class="font-semibold text-xs">Meta-Learning</h3>
+            </div>
+        </div>
+
+        <!-- Real-time Log -->
+        <div class="glass-panel p-6 rounded-xl font-mono text-sm h-[500px] overflow-y-auto relative" id="log-console">
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/50 pointer-events-none"></div>
+            <div id="log-content" class="relative z-10">
+                <p class="text-emerald-400 log-entry">> System Online. Waiting for Swarm Dispatch...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logContent = document.getElementById('log-content');
+        const logConsole = document.getElementById('log-console');
+        
+        // ทดสอบส่ง Query ไปให้วงจร 5-phase
+        // สามารถเพิ่ม ?industry=legal หรือ health ได้
+        const query = encodeURIComponent("วิเคราะห์ความเสี่ยงพอร์ตการลงทุน กรณีธนาคารล่ม และกฎหมาย PDPA");
+        const eventSource = new EventSource(`http://localhost:8000/streams/research?query=${query}&industry=fintech`);
+
+        eventSource.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            
+            let logMsg = response.msg;
+            if (!logMsg && response.chunk) {
+                logMsg = response.chunk.log || response.chunk.message || response.chunk.insight || `Processing...`;
+            }
+            if (!logMsg && response.data) {
+                logMsg = JSON.stringify(response.data);
+            }
+            if (!logMsg && response.final_sim_ready) {
+                logMsg = "Simulation payload ready: " + JSON.stringify(response.final_sim_ready);
+            }
+            
+            // Format color logic
+            let color = "text-slate-300";
+            if (response.status === "aborted") color = "text-red-400 font-bold";
+            else if (response.status === "all_phases_complete") color = "text-blue-400 font-bold";
+            else if (response.chunk && response.chunk.status === "blocked") color = "text-red-400";
+            else if (response.chunk && response.chunk.status === "circuit_broken") color = "text-orange-400";
+
+            appendLog(logMsg || `Received data from ${response.status}`, color);
+            updateUI(response.status);
+            
+            if (response.status === "all_phases_complete" || response.status === "aborted") {
+                if(response.status === "all_phases_complete") {
+                    appendLog("✅ การประมวลผล Sovereign Swarm เสร็จสมบูรณ์", "text-blue-400 font-bold mt-4");
+                }
+                eventSource.close();
+                ['spin-0', 'spin-1', 'spin-2', 'spin-3', 'spin-4'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.classList.add('hidden');
+                });
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            appendLog("❌ Connection Error: สัญญาณขาดหาย หรือเซิร์ฟเวอร์ไม่ได้เปิดอยู่", "text-red-500");
+            eventSource.close();
+        };
+
+        function appendLog(text, colorClass = "text-slate-300") {
+            const p = document.createElement('p');
+            p.className = `mb-2 log-entry ${colorClass}`;
+            p.innerHTML = `<span class="text-slate-500 opacity-70">[${new Date().toLocaleTimeString()}]</span> <span class="text-blue-400">></span> ${text}`;
+            logContent.appendChild(p);
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        function updateUI(status) {
+            // Reset spinners
+            ['spin-0', 'spin-1', 'spin-2', 'spin-3', 'spin-4'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
+            
+            // Stop pulses
+            ['step-0', 'step-1', 'step-2', 'step-3', 'step-4'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.classList.remove('animate-pulse');
+            });
+
+            if (status.includes("phase_0")) activateStep('step-0', 'spin-0', 'glass-active-red');
+            else if (status.includes("phase_1") && !status.includes("phase_1_5")) activateStep('step-1', 'spin-1', 'glass-active-blue');
+            else if (status.includes("phase_1_5")) activateStep('step-1', 'spin-1', 'glass-active-blue'); // share phase 1 UI for circuit breaker
+            else if (status.includes("phase_2")) activateStep('step-2', 'spin-2', 'glass-active-yellow');
+            else if (status.includes("phase_3")) activateStep('step-3', 'spin-3', 'glass-active-green');
+            else if (status.includes("phase_4")) activateStep('step-4', 'spin-4', 'glass-active-purple');
+        }
+
+        function activateStep(stepId, spinId, activeClass) {
+            const stepEl = document.getElementById(stepId);
+            const spinEl = document.getElementById(spinId);
+            if(stepEl && spinEl) {
+                stepEl.classList.remove('opacity-50');
+                stepEl.classList.add(activeClass, 'animate-pulse');
+                spinEl.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

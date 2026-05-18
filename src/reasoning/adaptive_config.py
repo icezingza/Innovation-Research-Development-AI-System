@@ -4,6 +4,7 @@ Reads QualityTracker analysis to auto-tune RecursiveConfig max_depth
 and WorkflowConfig parameters, closing the feedback loop between
 observed reasoning quality and runtime configuration.
 """
+
 import logging
 import time
 from typing import Any
@@ -96,7 +97,9 @@ class AdaptiveConfigManager:
         if trend == "declining":
             # Reduce complexity to avoid degrading quality further
             new_depth = max(_MIN_DEPTH, self.recursive_config.max_depth - 1)
-            new_sub = max(_MIN_SUB_QUESTIONS, self.workflow_config.max_sub_questions - 1)
+            new_sub = max(
+                _MIN_SUB_QUESTIONS, self.workflow_config.max_sub_questions - 1
+            )
             self.recursive_config = RecursiveConfig(
                 max_depth=new_depth,
                 convergence_threshold=self.recursive_config.convergence_threshold,
@@ -112,7 +115,9 @@ class AdaptiveConfigManager:
         elif trend == "improving":
             # Gradually increase depth to exploit quality headroom
             new_depth = min(_MAX_DEPTH, self.recursive_config.max_depth + 1)
-            new_sub = min(_MAX_SUB_QUESTIONS, self.workflow_config.max_sub_questions + 1)
+            new_sub = min(
+                _MAX_SUB_QUESTIONS, self.workflow_config.max_sub_questions + 1
+            )
             self.recursive_config = RecursiveConfig(
                 max_depth=new_depth,
                 convergence_threshold=self.recursive_config.convergence_threshold,

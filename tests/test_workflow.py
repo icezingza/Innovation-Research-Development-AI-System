@@ -1,4 +1,5 @@
 """Tests for ResearchWorkflow — all external deps (pipeline, debate, recursive) mocked."""
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -28,9 +29,7 @@ def _make_agent_message(hypothesis: dict, quality: float) -> AgentMessage:
 
 def _mock_pipeline(hypothesis: dict, quality: float = 0.8) -> AsyncMock:
     pipeline = AsyncMock()
-    pipeline.run = AsyncMock(
-        return_value=[_make_agent_message(hypothesis, quality)]
-    )
+    pipeline.run = AsyncMock(return_value=[_make_agent_message(hypothesis, quality)])
     return pipeline
 
 

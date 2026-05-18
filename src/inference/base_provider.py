@@ -1,14 +1,20 @@
 from abc import ABC, abstractmethod
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class ThinkingConfig(BaseModel):
+    enabled: bool = False
+    budget_tokens: int = 1024
+
 
 class CompletionRequest(BaseModel):
     prompt: str
     system: str = ""
     temperature: float = 0.7
     max_tokens: int = 2048
-    # thinking_budget=0 disables extended thinking; >0 caps thinking tokens
-    thinking_budget: int = 0
+    thinking: ThinkingConfig = Field(default_factory=ThinkingConfig)
+    enable_caching: bool = True
 
 
 class CompletionResponse(BaseModel):
@@ -16,10 +22,10 @@ class CompletionResponse(BaseModel):
     model: str
     provider: str
     tokens_used: int | None = None
-    # Tokens served from cache (0.1x price on Anthropic, auto on OpenAI/Gemini)
-    cached_tokens: int | None = None
-    # Tokens written to cache this request (1.25x–2x on Anthropic)
-    cache_write_tokens: int | None = None
+    cached_tokens: int | None = 0
+    cache_read_tokens: int | None = 0
+    cache_creation_tokens: int | None = 0
+
 
 class BaseInferenceProvider(ABC):
     """Contract that all inference providers must satisfy.
@@ -60,3 +66,7 @@ class BaseInferenceProvider(ABC):
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
         """Execute inference request and return completion."""
         ...
+
+    async def close(self) -> None:
+        """Release provider-owned async resources, if any."""
+        return None

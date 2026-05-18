@@ -1,90 +1,458 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>IRD-AI ROI Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NamoNexus Executive ROI Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #0f172a; color: #e2e8f0; }
-        .container { max-width: 900px; margin: auto; }
-        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .metric { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
-        .metric span:first-child { color: #94a3b8; }
-        .metric span:last-child { font-weight: bold; color: #38bdf8; }
-        h2 { color: #38bdf8; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.9em; }
-        .badge-success { background: #065f46; color: #6ee7b7; }
-        .badge-warning { background: #78350f; color: #fbbf24; }
-        canvas { max-height: 300px; margin: 20px 0; }
-        .loading { text-align: center; padding: 40px; color: #94a3b8; }
+        :root {
+            --bg-base: #030712;
+            --bg-panel: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+
+        .glass-panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--accent-glow);
+        }
+
+        .grid-top {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .metric-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .metric-value.green { color: var(--success); }
+        .metric-value.blue { color: #60a5fa; }
+
+        .metric-sub {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) {
+            .chart-section { grid-template-columns: 1fr; }
+        }
+
+        .list-group {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .list-item:last-child { border-bottom: none; }
+        .list-item span:first-child { color: var(--text-secondary); }
+        .list-item span:last-child { font-weight: 600; }
+
+        /* Packaging & Upsell Section (Monetizing Innovation) */
+        .packaging-section {
+            margin-top: 48px;
+        }
+
+        .packaging-title {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .tiers-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .tiers-grid { grid-template-columns: 1fr; }
+        }
+
+        .tier-card {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tier-card.active {
+            background: var(--bg-panel);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+            position: relative;
+        }
+
+        .tier-card.active::before {
+            content: 'CURRENT';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-primary);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .tier-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+        .tier-price { font-size: 2rem; font-weight: 800; margin-bottom: 16px; }
+        .tier-price span { font-size: 1rem; color: var(--text-secondary); font-weight: 400; }
+        .tier-desc { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 24px; flex-grow: 1; }
+        
+        .btn {
+            background: transparent;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-primary { background: var(--accent-primary); border-color: var(--accent-primary); }
+        .btn-primary:hover { background: #2563eb; }
+
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-base);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            transition: opacity 0.5s ease;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>📊 IRD-AI ROI Analytics</h1>
-    <div id="content" class="loading">Loading ROI data...</div>
+
+<div id="loading" class="loading-screen">
+    Authenticating & Compiling Cognitive ROI...
+</div>
+
+<div class="container" style="display: none;" id="dashboard">
+    <header>
+        <div>
+            <h1>Sovereign FinOps Analytics</h1>
+            <div class="subtitle">Value realization and structural cost advantages for C-Level</div>
+        </div>
+        <div>
+            <div class="glass-panel" style="padding: 12px 24px;">
+                <div class="metric-title" style="margin: 0;">Reporting Period</div>
+                <div id="period-val" style="font-weight: 600; font-size: 1.1rem;">-</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Top Value Metrics -->
+    <div class="grid-top">
+        <div class="glass-panel">
+            <div class="metric-title">Human Hours Saved</div>
+            <div class="metric-value blue" id="hours-saved">0</div>
+            <div class="metric-sub">Equivalent to <strong id="fte-equivalent">0</strong> full-time researchers this month.</div>
+        </div>
+        
+        <div class="glass-panel">
+            <div class="metric-title">Cost Reduction vs. Public Cloud</div>
+            <div class="metric-value green" id="savings-percent">0%</div>
+            <div class="metric-sub">By utilizing sovereign local infrastructure instead of AWS/GCP LLM endpoints.</div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="metric-title">Sovereign On-Premise Cost</div>
+            <div class="metric-value" id="total-on-premise-cost">$0</div>
+            <div class="metric-sub">Includes $<span id="edge-hw-cost">0</span> Edge HW Depreciation + API Tokens.<br>Versus <strong style="color: #ef4444;" id="cloud-cost">$0</strong> equivalent on public providers.</div>
+        </div>
+    </div>
+
+    <!-- Charts & Benefits -->
+    <div class="chart-section">
+        <div class="glass-panel">
+            <div class="metric-title">Cumulative Cost Advantage</div>
+            <canvas id="costChart" style="margin-top: 16px;"></canvas>
+        </div>
+        
+        <div class="glass-panel">
+            <div class="metric-title">Business Outcomes Delivered</div>
+            <p class="metric-sub" style="margin-bottom: 20px;">
+                True value is measured by business outcomes, not API calls. Here is what your autonomous agents accomplished:
+            </p>
+            <ul class="list-group">
+                <li class="list-item">
+                    <span>Research Workflows Completed</span>
+                    <span id="tasks-completed">0</span>
+                </li>
+                <li class="list-item">
+                    <span>Average Resolution Time</span>
+                    <span id="avg-time">0s</span>
+                </li>
+                <li class="list-item">
+                    <span>Reasoning Operations Executed</span>
+                    <span id="api-calls">0</span>
+                </li>
+            </ul>
+            <div style="margin-top: 24px; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <strong style="color: var(--success); display: block; margin-bottom: 4px;">Strategic Recommendation</strong>
+                <span id="ai-recommendation" style="font-size: 0.9rem; color: #d1d5db;">Analyzing data...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monetizing Innovation: Packaging & Value Scaling -->
+    <div class="packaging-section">
+        <h2 class="packaging-title">Scale Your Cognitive Capacity</h2>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Maximize your ROI by choosing the tier aligned with your required velocity and data sovereignty strictness.
+        </p>
+        
+        <div class="tiers-grid">
+            <!-- Professional -->
+            <div class="tier-card" id="tier-pro">
+                <div class="tier-name">Professional</div>
+                <div class="tier-price">$499 <span>/ mo</span></div>
+                <div class="tier-desc">For specialized teams needing continuous autonomous research with basic data privacy.</div>
+                <ul class="list-group" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem;">
+                    <li class="list-item"><span>Standard Inference Speed</span></li>
+                    <li class="list-item"><span>Shared Tenant DB</span></li>
+                    <li class="list-item"><span>50,000 API Quota</span></li>
+                </ul>
+                <button class="btn">Upgrade to Pro</button>
+            </div>
+
+            <!-- Enterprise (Sovereign) -->
+            <div class="tier-card active" id="tier-enterprise">
+                <div class="tier-name">Sovereign Enterprise</div>
+                <div class="tier-price">Custom <span>/ yr</span></div>
+                <div class="tier-desc">Complete air-gapped isolation, dedicated GPU clustering, and unmetered ROI generation.</div>
+                <ul class="list-group" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem;">
+                    <li class="list-item"><span>Air-gapped Deployment</span></li>
+                    <li class="list-item"><span>Unlimited Inference</span></li>
+                    <li class="list-item"><span>Custom Knowledge Graph</span></li>
+                </ul>
+                <button class="btn btn-primary">Contact Sales</button>
+            </div>
+
+            <!-- Global Cluster -->
+            <div class="tier-card" id="tier-global">
+                <div class="tier-name">Global Federation</div>
+                <div class="tier-price">Strategic</div>
+                <div class="tier-desc">Cross-region latency optimization with multi-datacenter consensus and reasoning synchronization.</div>
+                <ul class="list-group" style="text-align: left; margin-bottom: 24px; font-size: 0.9rem;">
+                    <li class="list-item"><span>Multi-region Sync</span></li>
+                    <li class="list-item"><span>Consensus Agents</span></li>
+                    <li class="list-item"><span>99.999% SLA</span></li>
+                </ul>
+                <button class="btn">Explore Architecture</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // --- CONFIG ---
     const API_BASE = window.location.origin;
     const TENANT_ID = new URLSearchParams(window.location.search).get('tenant_id') || 'demo-tenant';
     const JWT = localStorage.getItem('jwt') || '';
 
-    async function fetchROI() {
+    async function initDashboard() {
         try {
             const res = await fetch(`${API_BASE}/tenants/${TENANT_ID}/roi`, {
                 headers: { 'Authorization': `Bearer ${JWT}` }
             });
-            if (!res.ok) throw new Error('Failed to fetch ROI');
+            if (!res.ok) throw new Error('Failed to fetch ROI data');
             const data = await res.json();
-            renderROI(data);
+            
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                populateData(data);
+            }, 500);
+
         } catch (e) {
-            document.getElementById('content').innerHTML = `<p style="color:red">Error: ${e.message}</p>`;
+            document.getElementById('loading').innerHTML = `
+                <div style="text-align:center;">
+                    <span style="color:#ef4444; font-size: 2rem;">⚠️</span><br>
+                    Cannot connect to Sovereign API<br>
+                    <span style="font-size:1rem; color:#94a3b8;">${e.message}</span>
+                </div>
+            `;
         }
     }
 
-    function renderROI(data) {
-        const html = `
-            <div class="card">
-                <h2>Overview</h2>
-                <div class="metric"><span>Period</span><span>${data.period}</span></div>
-                <div class="metric"><span>Tasks Completed</span><span>${data.tasks_completed}</span></div>
-                <div class="metric"><span>API Calls Used</span><span>${data.api_calls_used}</span></div>
-                <div class="metric"><span>Avg Time per Task</span><span>${data.avg_time_per_task_seconds}s</span></div>
-            </div>
-            <div class="card">
-                <h2>Cost Comparison</h2>
-                <div class="metric"><span>☁️ Cloud Equivalent Cost</span><span>$${data.token_cost_cloud_equivalent}</span></div>
-                <div class="metric"><span>💡 IRD-AI Actual Cost</span><span>$${data.actual_token_cost}</span></div>
-                <div class="metric"><span>💰 Savings</span><span class="badge ${data.savings_percentage > 50 ? 'badge-success' : 'badge-warning'}">${data.savings_percentage}% saved</span></div>
-            </div>
-            <div class="card">
-                <h2>Efficiency Gains</h2>
-                <canvas id="roiChart"></canvas>
-                <p><strong>Hours Saved:</strong> ${data.hours_saved} hrs (${(data.hours_saved/8).toFixed(1)} working days)</p>
-                <p><em>${data.recommendation}</em></p>
-            </div>
-        `;
-        document.getElementById('content').innerHTML = html;
+    function populateData(data) {
+        document.getElementById('period-val').innerText = data.period;
+        
+        // Value Metrics
+        document.getElementById('hours-saved').innerText = data.hours_saved;
+        document.getElementById('fte-equivalent').innerText = (data.hours_saved / 160).toFixed(1); // Assuming 160 hrs/month = 1 FTE
+        
+        document.getElementById('savings-percent').innerText = `${data.savings_percentage}%`;
+        
+        document.getElementById('total-on-premise-cost').innerText = `$${data.total_on_premise_cost.toLocaleString()}`;
+        document.getElementById('edge-hw-cost').innerText = data.edge_hardware_depreciation_cost.toLocaleString();
+        document.getElementById('cloud-cost').innerText = `$${data.token_cost_cloud_equivalent.toLocaleString()}`;
 
-        // Chart
-        const ctx = document.getElementById('roiChart').getContext('2d');
+        // Business Outcomes
+        document.getElementById('tasks-completed').innerText = data.tasks_completed;
+        document.getElementById('avg-time').innerText = `${data.avg_time_per_task_seconds}s`;
+        document.getElementById('api-calls').innerText = data.api_calls_used.toLocaleString();
+
+        document.getElementById('ai-recommendation').innerText = data.recommendation;
+
+        // Render Chart
+        renderChart(data.token_cost_cloud_equivalent, data.total_on_premise_cost);
+    }
+
+    function renderChart(cloud, actual) {
+        const ctx = document.getElementById('costChart').getContext('2d');
+        
+        Chart.defaults.color = '#9ca3af';
+        Chart.defaults.font.family = 'Inter';
+
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Cloud Cost', 'IRD-AI Cost', 'Hours Saved'],
+                labels: ['Public Cloud API', 'NamoNexus Air-Gapped'],
                 datasets: [{
-                    label: 'Value',
-                    data: [data.token_cost_cloud_equivalent, data.actual_token_cost, data.hours_saved],
-                    backgroundColor: ['#ef4444', '#38bdf8', '#10b981'],
+                    label: 'Operational Cost ($)',
+                    data: [cloud, actual],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)', // Red for cloud
+                        'rgba(59, 130, 246, 0.8)'  // Blue for local
+                    ],
+                    borderColor: [
+                        '#ef4444',
+                        '#3b82f6'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 6
                 }]
             },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
         });
     }
 
-    fetchROI();
+    // Auto-init
+    initDashboard();
 </script>
+
 </body>
 </html>

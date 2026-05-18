@@ -106,3 +106,100 @@ async def test_disabled_embedding_provider_raises():
     assert not provider.enabled
     with pytest.raises(RuntimeError):
         await provider.embed("test")
+
+
+def test_completion_request_response_extended_fields():
+    from src.inference.base_provider import (
+        CompletionRequest,
+        CompletionResponse,
+        ThinkingConfig,
+    )
+
+    req = CompletionRequest(
+        prompt="test prompt",
+        thinking=ThinkingConfig(enabled=True, budget_tokens=2048),
+        enable_caching=True,
+    )
+    assert req.thinking.enabled is True
+    assert req.thinking.budget_tokens == 2048
+    assert req.enable_caching is True
+
+    resp = CompletionResponse(
+        content="test content",
+        model="test-model",
+        provider="test-provider",
+        tokens_used=100,
+        cached_tokens=50,
+        cache_read_tokens=40,
+        cache_creation_tokens=10,
+    )
+    assert resp.cached_tokens == 50
+    assert resp.cache_read_tokens == 40
+    assert resp.cache_creation_tokens == 10
+
+
+@pytest.mark.asyncio
+async def test_inference_router_telemetry_integration():
+    from src.inference.router import InferenceRouter
+    from src.inference.base_provider import (
+        BaseInferenceProvider,
+        CompletionRequest,
+        CompletionResponse,
+    )
+    from src.telemetry.runtime_metrics import token_cache_reads, token_cache_creations
+
+    class MockProvider(BaseInferenceProvider):
+        @property
+        def name(self) -> str:
+            return "mock-telemetry-provider"
+
+        @property
+        def enabled(self) -> bool:
+            return True
+
+        @property
+        def reasoning_tier(self) -> str:
+            return "fast"
+
+        @property
+        def latency_expectation(self) -> str:
+            return "instant"
+
+        async def complete(self, request: CompletionRequest) -> CompletionResponse:
+            return CompletionResponse(
+                content="hi",
+                model="mock-model",
+                provider="mock-telemetry-provider",
+                tokens_used=10,
+                cached_tokens=5,
+                cache_read_tokens=4,
+                cache_creation_tokens=1,
+            )
+
+    router = InferenceRouter(providers=[MockProvider()])
+
+    # Save current counts
+    try:
+        initial_reads = token_cache_reads.labels(
+            provider="mock-telemetry-provider", model="mock-model"
+        )._value.get()
+        initial_creations = token_cache_creations.labels(
+            provider="mock-telemetry-provider", model="mock-model"
+        )._value.get()
+    except Exception:
+        initial_reads = 0
+        initial_creations = 0
+
+    res = await router.complete(prompt="hello")
+    assert res == "hi"
+
+    # Verify counters incremented
+    new_reads = token_cache_reads.labels(
+        provider="mock-telemetry-provider", model="mock-model"
+    )._value.get()
+    new_creations = token_cache_creations.labels(
+        provider="mock-telemetry-provider", model="mock-model"
+    )._value.get()
+
+    assert new_reads == initial_reads + 4
+    assert new_creations == initial_creations + 1

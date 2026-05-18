@@ -53,9 +53,7 @@ class AsyncWorkerPool:
             for i in range(self._max_workers)
         ]
         runtime_events.labels(event_type="worker_pool_started").inc()
-        logger.info(
-            "worker_pool_started", extra={"max_workers": self._max_workers}
-        )
+        logger.info("worker_pool_started", extra={"max_workers": self._max_workers})
 
     async def stop(self) -> None:
         self._running = False

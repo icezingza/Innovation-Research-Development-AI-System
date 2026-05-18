@@ -1,4 +1,5 @@
 """Tests for AdaptiveConfigManager self-improvement loop."""
+
 import pytest
 
 from src.reasoning.adaptive_config import AdaptiveConfigManager, _MAX_DEPTH, _MIN_DEPTH
@@ -40,6 +41,7 @@ class TestAdaptiveConfigManager:
     @pytest.mark.asyncio
     async def test_declining_reduces_depth(self) -> None:
         from src.reasoning.recursive_loop import RecursiveConfig
+
         mgr = AdaptiveConfigManager(
             _make_tracker_with_trend("declining"),
             recursive_config=RecursiveConfig(max_depth=5),
@@ -50,6 +52,7 @@ class TestAdaptiveConfigManager:
     @pytest.mark.asyncio
     async def test_improving_increases_depth(self) -> None:
         from src.reasoning.recursive_loop import RecursiveConfig
+
         mgr = AdaptiveConfigManager(
             _make_tracker_with_trend("improving"),
             recursive_config=RecursiveConfig(max_depth=3),
@@ -60,6 +63,7 @@ class TestAdaptiveConfigManager:
     @pytest.mark.asyncio
     async def test_stable_does_not_change_depth(self) -> None:
         from src.reasoning.recursive_loop import RecursiveConfig
+
         mgr = AdaptiveConfigManager(
             _make_tracker_with_trend("stable"),
             recursive_config=RecursiveConfig(max_depth=4),
@@ -70,6 +74,7 @@ class TestAdaptiveConfigManager:
     @pytest.mark.asyncio
     async def test_depth_clamped_at_min(self) -> None:
         from src.reasoning.recursive_loop import RecursiveConfig
+
         mgr = AdaptiveConfigManager(
             _make_tracker_with_trend("declining"),
             recursive_config=RecursiveConfig(max_depth=_MIN_DEPTH),
@@ -80,6 +85,7 @@ class TestAdaptiveConfigManager:
     @pytest.mark.asyncio
     async def test_depth_clamped_at_max(self) -> None:
         from src.reasoning.recursive_loop import RecursiveConfig
+
         mgr = AdaptiveConfigManager(
             _make_tracker_with_trend("improving"),
             recursive_config=RecursiveConfig(max_depth=_MAX_DEPTH),

@@ -6,6 +6,7 @@ so that RLS policies can filter rows by tenant automatically.
 Falls back to SYSTEM_TENANT_ID when no tenant context is present (e.g. in
 heuristic mode tests that don't run TenantMiddleware).
 """
+
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -43,8 +44,6 @@ async def get_rls_db(request: Request, db: AsyncSession = Depends(get_db)):
         yield db
     finally:
         try:
-            await db.execute(
-                text("SELECT set_config('app.tenant_id', '', false)")
-            )
+            await db.execute(text("SELECT set_config('app.tenant_id', '', false)"))
         except Exception:
             pass

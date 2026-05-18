@@ -74,13 +74,16 @@ class ResearchWorkflow:
             runtime_events.labels(event_type="workflow_complete").inc()
             return result.model_copy(update={"duration_seconds": round(elapsed, 4)})
 
-    async def _execute(self, goal: str, workflow_id: str | None = None) -> WorkflowResult:
+    async def _execute(
+        self, goal: str, workflow_id: str | None = None
+    ) -> WorkflowResult:
         workflow_id = workflow_id or str(uuid.uuid4())
         cfg = self._config
 
         if self._stream:
             await self._stream.publish(
-                workflow_id, {"type": "started", "goal": goal, "workflow_id": workflow_id}
+                workflow_id,
+                {"type": "started", "goal": goal, "workflow_id": workflow_id},
             )
 
         # --- Prior knowledge recall ---
@@ -203,9 +206,13 @@ class ResearchWorkflow:
                         confidence=synthesis.get("primary_confidence", 0.0),
                         source="workflow",
                         session_id=workflow_id,
-                        evidence=list(set(
-                            e for r in sub_results for e in r.hypothesis.get("evidence", [])
-                        )),
+                        evidence=list(
+                            set(
+                                e
+                                for r in sub_results
+                                for e in r.hypothesis.get("evidence", [])
+                            )
+                        ),
                     )
                 )
             except Exception as exc:
@@ -213,7 +220,11 @@ class ResearchWorkflow:
 
         if self._stream:
             await self._stream.publish(
-                workflow_id, {"type": "synthesis_done", "conclusion": synthesis.get("conclusion", "")}
+                workflow_id,
+                {
+                    "type": "synthesis_done",
+                    "conclusion": synthesis.get("conclusion", ""),
+                },
             )
             await self._stream.close(workflow_id)
 
@@ -250,9 +261,7 @@ class ResearchWorkflow:
             )
             if output:
                 lines = [
-                    line.strip()
-                    for line in output.strip().splitlines()
-                    if line.strip()
+                    line.strip() for line in output.strip().splitlines() if line.strip()
                 ]
                 if lines:
                     return lines[:max_questions]
@@ -316,6 +325,10 @@ class ResearchWorkflow:
             primary_hypothesis={},
             debate_result=None,
             recursive_result=None,
-            synthesis={"goal": goal, "conclusion": "No results produced", "error": True},
+            synthesis={
+                "goal": goal,
+                "conclusion": "No results produced",
+                "error": True,
+            },
             duration_seconds=0.0,
         )

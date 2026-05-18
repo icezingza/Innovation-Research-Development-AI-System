@@ -1,9 +1,11 @@
 """Tests for HypothesisAgent, CritiqueAgent, and SynthesisAgent."""
+
 import uuid
 
 import pytest
 
 from src.agents.critique_agent import CritiqueAgent
+from src.agents.futurist_agent import FuturistAgent, TOPIC_FORECAST_GENERATED
 from src.agents.hypothesis_agent import HypothesisAgent
 from src.agents.synthesis_agent import SynthesisAgent
 from src.infrastructure.event_bus import (
@@ -16,6 +18,7 @@ from src.infrastructure.event_bus import (
 
 
 # ---------- HypothesisAgent ----------
+
 
 @pytest.mark.asyncio
 async def test_hypothesis_agent_returns_action_message():
@@ -51,6 +54,7 @@ async def test_hypothesis_agent_no_bus_still_works():
 
 
 # ---------- CritiqueAgent ----------
+
 
 @pytest.mark.asyncio
 async def test_critique_agent_returns_critique():
@@ -107,14 +111,27 @@ async def test_critique_agent_reports_consistency():
 
 # ---------- SynthesisAgent ----------
 
+
 @pytest.mark.asyncio
 async def test_synthesis_agent_returns_conclusion():
     hypotheses = [
-        {"id": "h1", "statement": "Sleep consolidates memory", "confidence": 0.8, "evidence": ["e1"]},
-        {"id": "h2", "statement": "Deep sleep is critical for memory", "confidence": 0.7, "evidence": ["e2"]},
+        {
+            "id": "h1",
+            "statement": "Sleep consolidates memory",
+            "confidence": 0.8,
+            "evidence": ["e1"],
+        },
+        {
+            "id": "h2",
+            "statement": "Deep sleep is critical for memory",
+            "confidence": 0.7,
+            "evidence": ["e2"],
+        },
     ]
     agent = SynthesisAgent()
-    msg = await agent.run({"goal": "How does sleep affect memory?", "hypotheses": hypotheses})
+    msg = await agent.run(
+        {"goal": "How does sleep affect memory?", "hypotheses": hypotheses}
+    )
     action = msg.content["action"]
     assert "conclusion" in action
     assert "confidence" in action
@@ -152,9 +169,61 @@ async def test_synthesis_agent_empty_hypotheses():
 async def test_synthesis_agent_selects_highest_quality():
     hypotheses = [
         {"id": "h1", "statement": "weak hypothesis", "confidence": 0.1, "evidence": []},
-        {"id": "h2", "statement": "strong hypothesis", "confidence": 0.95, "evidence": ["lots", "of", "evidence"]},
+        {
+            "id": "h2",
+            "statement": "strong hypothesis",
+            "confidence": 0.95,
+            "evidence": ["lots", "of", "evidence"],
+        },
     ]
     agent = SynthesisAgent()
     msg = await agent.run({"goal": "Which is better?", "hypotheses": hypotheses})
     action = msg.content["action"]
     assert action["confidence"] > 0.1
+
+
+# ---------- FuturistAgent ----------
+
+
+@pytest.mark.asyncio
+async def test_futurist_agent_returns_forecast():
+    agent = FuturistAgent()
+    msg = await agent.run(
+        {"question": "What is the future of Quantum Computing?", "timeframe_years": 8}
+    )
+    action = msg.content["action"]
+    assert "forecast_id" in action
+    assert "scenarios" in action
+    assert "timeline" in action
+    assert "emergence_signals" in action
+    assert action["target_horizon_years"] == 8
+
+    scenarios = action["scenarios"]
+    assert "optimistic" in scenarios
+    assert "pessimistic" in scenarios
+    assert "most_likely" in scenarios
+
+
+@pytest.mark.asyncio
+async def test_futurist_agent_publishes_event():
+    bus = RuntimeEventBus()
+    events: list[RuntimeEvent] = []
+
+    async def capture(e: RuntimeEvent) -> None:
+        events.append(e)
+
+    bus.subscribe(TOPIC_FORECAST_GENERATED, capture)
+    agent = FuturistAgent(event_bus=bus)
+    await agent.run({"question": "AI-driven biology future", "timeframe_years": 10})
+
+    assert len(events) == 1
+    assert events[0].topic == TOPIC_FORECAST_GENERATED
+    assert "forecast_id" in events[0].payload
+    assert "most_likely_path" in events[0].payload
+
+
+@pytest.mark.asyncio
+async def test_futurist_agent_no_bus_still_works():
+    agent = FuturistAgent(event_bus=None)
+    msg = await agent.run({"question": "Web3 future", "timeframe_years": 5})
+    assert msg.content["action"]["scenarios"]["most_likely"]

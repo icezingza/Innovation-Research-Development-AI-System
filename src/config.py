@@ -9,9 +9,7 @@ class Settings(BaseSettings):
     )
 
     # --- Infrastructure ---
-    postgres_url: str = (
-        "postgresql+asyncpg://app_user:app_secret@localhost/cognition"
-    )
+    postgres_url: str = "postgresql+asyncpg://app_user:app_secret@localhost/cognition"
     redis_url: str = "redis://localhost:6379"
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
@@ -36,6 +34,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model_fast: str = "gemini-1.5-flash"
     gemini_model_deep: str = "gemini-1.5-pro"
+
+    # --- Anthropic inference ---
+    anthropic_api_key: str = ""
 
     # --- DeepSeek Inference ---
     deepseek_api_key: str = ""

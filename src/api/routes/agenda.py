@@ -4,6 +4,7 @@ GET  /intelligence/agenda        — current agenda analysis
 POST /intelligence/agenda/run    — trigger an agenda analysis and submit
                                    high-priority items to the scheduler
 """
+
 import logging
 
 from fastapi import APIRouter, HTTPException, Request

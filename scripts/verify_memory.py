@@ -10,6 +10,7 @@ Environment variables (see .env.example):
     NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
     QDRANT_HOST, QDRANT_PORT
 """
+
 import asyncio
 import os
 import sys
@@ -125,7 +126,9 @@ async def main(retries: int = 10, interval: float = 3.0) -> int:
             time.sleep(interval)
 
     print("\nError: Memory Systems failed to initialize in time.")
-    print("Tip: Run `docker compose up -d` from the project root to start all services.")
+    print(
+        "Tip: Run `docker compose up -d` from the project root to start all services."
+    )
     return 1
 
 

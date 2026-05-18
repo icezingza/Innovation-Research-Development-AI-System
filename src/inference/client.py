@@ -1,4 +1,5 @@
 """Factory module — creates an InferenceRouter wired from Settings."""
+
 from src.config import Settings
 from src.inference.anthropic_provider import AnthropicProvider
 from src.inference.embedding_provider import (
@@ -7,6 +8,7 @@ from src.inference.embedding_provider import (
     LocalEmbeddingProvider,
     OpenAIEmbeddingProvider,
 )
+from src.inference.anthropic_provider import AnthropicProvider
 from src.inference.gemini_provider import GeminiProvider
 from src.inference.ollama_provider import OllamaProvider
 from src.inference.openai_provider import OpenAIProvider
@@ -63,6 +65,15 @@ def create_inference_router(settings: Settings) -> InferenceRouter:
             GeminiProvider(
                 api_key=settings.gemini_api_key,
                 model=settings.gemini_model_deep,
+                reasoning_tier="deep",
+            )
+        )
+
+    if settings.anthropic_api_key:
+        providers.append(
+            AnthropicProvider(
+                api_key=settings.anthropic_api_key,
+                model="claude-3-7-sonnet-20250219",
                 reasoning_tier="deep",
             )
         )

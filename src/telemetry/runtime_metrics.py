@@ -29,6 +29,18 @@ memory_sync_operations = Counter(
     ["layer"],
 )
 
+token_cache_reads = Counter(
+    "token_cache_reads_total",
+    "Total prompt cached tokens read",
+    ["provider", "model"],
+)
+
+token_cache_creations = Counter(
+    "token_cache_creations_total",
+    "Total prompt cached tokens created",
+    ["provider", "model"],
+)
+
 
 class RuntimeMetrics:
     """Captures and exposes runtime telemetry metrics."""

@@ -1,4 +1,5 @@
 """Per-tenant sliding-window rate limit middleware (HTTP 429 on burst abuse)."""
+
 import json
 import logging
 
@@ -42,11 +43,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if not allowed:
             return Response(
-                content=json.dumps({
-                    "detail": "Rate limit exceeded — too many requests per minute",
-                    "limit": limit,
-                    "retry_after_seconds": 60,
-                }),
+                content=json.dumps(
+                    {
+                        "detail": "Rate limit exceeded — too many requests per minute",
+                        "limit": limit,
+                        "retry_after_seconds": 60,
+                    }
+                ),
                 status_code=429,
                 media_type="application/json",
                 headers={
@@ -81,6 +84,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # 3. Last resort: client IP
         if not tenant_id or tenant_id == SYSTEM_TENANT_ID:
-            tenant_id = (request.client.host if request.client else "unknown")
+            tenant_id = request.client.host if request.client else "unknown"
 
         return tenant_id, tier

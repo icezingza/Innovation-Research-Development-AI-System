@@ -7,13 +7,14 @@ from src.memory.research_memory import ResearchMemory, MemoryEntry
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger("test_memory")
 
+
 async def test_memory_persistence():
     print("\n" + "🧠" * 5)
     print("🧠 กำลังทดสอบระบบความจำ (Memory Integration)...")
     print("🧠" * 5 + "\n")
-    
+
     # 1. Setup Memory Engine (In-memory mode for this test since DBs aren't connected)
-    memory = ResearchMemory() 
+    memory = ResearchMemory()
     test_topic = "ความลับของโปรเจกต์ NamoNexus"
     test_fact = "นะโมชอบใช้โหมด Fast ทำงานเบื้องต้นเสมอเพื่อประหยัด Token"
 
@@ -24,7 +25,7 @@ async def test_memory_persistence():
         statement=test_fact,
         confidence=1.0,
         source="test_script",
-        session_id="test_session"
+        session_id="test_session",
     )
     await memory.store(entry)
 
@@ -43,11 +44,12 @@ async def test_memory_persistence():
         print(f"   Match found: {results[0].statement}")
     else:
         print("\n❌ [FAIL] ระบบค้นคืนข้อมูลไม่พบ หรือข้อมูลไม่ตรง")
-        if results: 
+        if results:
             print(f"   ผลลัพธ์ที่ได้คือ: {results[0].statement}")
         else:
             print("   ไม่พบผลลัพธ์ใดๆ")
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
+
 
 if __name__ == "__main__":
     asyncio.run(test_memory_persistence())

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from src.orchestration.debate_runtime import DebateResult, DebateRuntime
@@ -70,3 +72,40 @@ async def test_debate_runtime_with_llm_disabled_uses_heuristic():
     for r in result.rounds:
         assert "Supporting evidence" in r.proponent.argument or r.proponent.argument
         assert "Counter-evidence" in r.opponent.argument or r.opponent.argument
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_triggers_on_stale_debate():
+    """Identical argument pairs across rounds trigger the circuit breaker.
+
+    Uses negation-pair words ('always'/'never') so ContradictionAnalyzer
+    marks rounds as inconsistent, preventing early convergence.
+    The pair is fixed, so consecutive round hashes match → circuit breaker fires.
+    """
+    runtime = DebateRuntime()
+
+    async def stale_generate(hypothesis, role, prior_argument=None):
+        if role == "proponent":
+            return ("The mechanism always produces the observed effect.", 0.6)
+        return ("The mechanism never produces the observed effect.", 0.5)
+
+    with patch.object(runtime, "_generate", new=stale_generate):
+        result = await runtime.debate("Stale hypothesis", max_rounds=3)
+    assert result.convergence_reason == "circuit_breaker"
+    assert result.converged is False
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_not_triggered_when_arguments_vary():
+    """Varying arguments should not trigger the circuit breaker."""
+    runtime = DebateRuntime()
+    call_count = 0
+
+    async def varying_generate(hypothesis, role, prior_argument=None):
+        nonlocal call_count
+        call_count += 1
+        return (f"Unique argument #{call_count} for {role}", 0.6)
+
+    with patch.object(runtime, "_generate", new=varying_generate):
+        result = await runtime.debate("Novel hypothesis", max_rounds=3)
+    assert result.convergence_reason != "circuit_breaker"

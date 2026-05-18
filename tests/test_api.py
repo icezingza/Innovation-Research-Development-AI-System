@@ -1,4 +1,5 @@
 """API integration tests using an in-memory SQLite DB and no external services."""
+
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -109,6 +110,21 @@ def test_app():
     application.include_router(cognition_router)
     application.include_router(intelligence_router)
     application.include_router(streams_router)
+
+    from fastapi import Request
+    from src.api.routes.auth import get_current_user
+
+    async def mock_get_current_user(request: Request):
+        payload = {
+            "sub": "00000000-0000-0000-0000-000000000002",
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "role": "member",
+        }
+        request.state.tenant_id = payload["tenant_id"]
+        request.state.user_id = payload["sub"]
+        return payload
+
+    application.dependency_overrides[get_current_user] = mock_get_current_user
     return application
 
 

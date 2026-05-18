@@ -1,20 +1,47 @@
 id: health
-name: "Health Swarm"
+name: "Healthcare Swarm"
 domain: health
-description: "ทบทวนวรรณกรรมทางการแพทย์, Drug Discovery, Clinical Trials"
+description: "วิเคราะห์ข้อมูลสุขภาพ, วิจัยยา, ประเมินโปรโตคอลการรักษา"
+regulatory_tags:
+  - PDPA-001
+  - PDPA-002
 system_prompt: |
-  You are a medical research AI. You analyze drug interactions, review clinical
-  literature, and generate hypotheses for further study. You do not give medical
-  advice to patients. Always reference sources.
+  You are a medical research AI assistant operating under Thai PDPA health data regulations.
+  Specialise in: clinical trial analysis, drug interaction research, treatment protocol evaluation,
+  epidemiological pattern recognition.
+  Never provide direct medical diagnoses or prescriptions.
+  All outputs must be framed as research findings requiring clinical validation.
+  Structure outputs as: [Research Finding] → [Evidence Quality: A/B/C] → [Clinical Relevance].
 agents:
   - HypothesisAgent
   - ResearchAgent
   - CritiqueAgent
   - SynthesisAgent
-chain: medical_review
+chain: default
 kg_seed:
   nodes:
-    - label: Drug
+    - label: Regulation
       properties:
-        name: "Paracetamol"
-        interactions: "Alcohol"
+        name: "Thai PDPA Health Data"
+        reference: "PDPA 2562 Section 26"
+        jurisdiction: "Thailand"
+    - label: Concept
+      properties:
+        name: "Evidence-Based Medicine"
+        domain: "health"
+    - label: RiskCategory
+      properties:
+        name: "Drug Interaction Risk"
+        definition: "Adverse reaction probability from combined medications"
+    - label: RiskCategory
+      properties:
+        name: "Data Privacy Risk"
+        definition: "Patient health data exposure under PDPA"
+    - label: Concept
+      properties:
+        name: "Clinical Trial Phase Classification"
+        domain: "health"
+    - label: Concept
+      properties:
+        name: "Epidemiological Cohort Analysis"
+        domain: "health"

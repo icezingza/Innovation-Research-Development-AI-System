@@ -78,9 +78,7 @@ class KnowledgeGraph:
             },
         )
 
-    async def get_hypothesis_lineage(
-        self, hypothesis_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_hypothesis_lineage(self, hypothesis_id: str) -> list[dict[str, Any]]:
         return await self._connector.run_query(
             """
             MATCH path = (root:Hypothesis)-[:EVOLVED_TO*0..]->(h:Hypothesis {id: $id})
@@ -110,4 +108,45 @@ class KnowledgeGraph:
                 rel.generation AS generation
             """,
             {"id": hypothesis_id, "depth": max_depth},
+        )
+
+    async def store_domain_concept(
+        self,
+        domain: str,
+        concept: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
+        """Create (:Domain)-[:CONTAINS]->(:Concept) in the knowledge graph."""
+        props = properties or {}
+        await self._connector.run_query(
+            """
+            MERGE (d:Domain {name: $domain})
+            MERGE (c:Concept {name: $concept})
+            SET c += $properties
+            MERGE (d)-[:CONTAINS]->(c)
+            """,
+            {"domain": domain, "concept": concept, "properties": props},
+        )
+
+    async def store_speculative_knowledge(
+        self,
+        node_id: str,
+        source: str,
+        content: str,
+        confidence: float,
+    ) -> None:
+        """Persist a (:SpeculativeKnowledge) node from meta-learning feedback."""
+        await self._connector.run_query(
+            """
+            MERGE (sk:SpeculativeKnowledge {id: $id})
+            SET sk.source     = $source,
+                sk.content    = $content,
+                sk.confidence = $confidence
+            """,
+            {
+                "id": node_id,
+                "source": source,
+                "content": content,
+                "confidence": confidence,
+            },
         )

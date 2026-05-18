@@ -51,4 +51,5 @@ def require_role(*roles: str):
                 detail=f"Required role: {roles}",
             )
         return tenant
+
     return Depends(dependency)

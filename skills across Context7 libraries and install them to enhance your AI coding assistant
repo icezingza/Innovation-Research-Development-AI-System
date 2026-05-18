@@ -1,0 +1,134 @@
+Search skills with CLI
+Find skills across Context7 libraries and install them to enhance your AI coding assistant.
+
+npx ctx7 skills search Innovation Research & Development AI System
+
+Related Skills
+17 skills from other libraries
+ui-design-system
+<500
+Trust Score: 8.9
+UI design system toolkit for Senior UI Designer including design token generation, component documentation, responsive design calculations, and developer handoff tools. Use for creating design systems, maintaining visual consistency, and facilitating design-dev collaboration.
+
+/alirezarezvani/claude-skills
+
+
+research
+<100
+Trust Score: 9
+Comprehensive research combining web search and AI synthesis. Use for deep research on topics, comparing technologies, investigating libraries, and finding GitHub issues related to problems.
+
+/johnlindquist/claude
+
+
+develop-ai-functions-example
+<100
+Trust Score: 10
+Develop examples for AI SDK functions. Use when creating, running, or modifying examples under examples/ai-functions/src to validate provider support, demonstrate features, or create test fixtures.
+
+/vercel/ai
+
+
+system-design
+<100
+Trust Score: 9.4
+Design systems, services, and architectures. Trigger with "design a system for", "how should we architect", "system design for", "what's the right architecture for", or when the user needs help with API design, data modeling, or service boundaries.
+
+/anthropics/knowledge-work-plugins
+
+
+ai-sdk-development
+<100
+Trust Score: 9.4
+TRIGGER when working with ai-sdk which is Laravel official first-party AI SDK. Activate when building, editing AI agents, chatbots, text generation, image generation, audio/TTS, transcription/STT, embeddings, RAG, vector stores, reranking, structured output, streaming, conversation memory, tools, queueing, broadcasting, and provider failover across OpenAI, Anthropic, Gemini, Azure, Groq, xAI, DeepSeek, Mistral, Ollama, ElevenLabs, Cohere, Jina, and VoyageAI. Invoke when the user references ai-sdk, the `Laravel\Ai\` namespace, or this project's AI features — not for other AI packages used directly.
+
+/laravel/ai
+
+
+bmad-cis-agent-innovation-strategist
+<100
+Trust Score: 9.4
+Disruptive innovation oracle for business model innovation and strategic disruption. Use when the user asks to talk to Victor or requests the Disruptive Innovation Oracle.
+
+/redhat-cop/vault-config-operator
+
+
+design-systems
+<100
+Trust Score: 7.2
+Design system lookup, CSS best practices, and AI-driven UI component generation via MCP tools
+
+/oimiragieo/agent-studio
+
+
+ai-research
+<100
+Trust Score: 4.1
+Systematic AI research process. Use when the user is AI researcher and the project is involved in AI research project.
+
+/parkjumyung/skills
+
+
+research-grants
+<100
+Trust Score: 10
+Write competitive research proposals for NSF, NIH, DOE, and DARPA. Agency-specific formatting, review criteria, budget preparation, broader impacts, significance statements, innovation narratives, and compliance with submission requirements.
+
+/davila7/claude-code-templates
+
+
+voice-ai-development
+<100
+Trust Score: 10
+Expert in building voice AI applications - from real-time voice agents to voice-enabled apps. Covers OpenAI Realtime API, Vapi for voice agents, Deepgram for transcription, ElevenLabs for synthesis, LiveKit for real-time infrastructure, and WebRTC fundamentals. Knows how to build low-latency, production-ready voice experiences. Use when: voice ai, voice agent, speech to text, text to speech, realtime voice.
+
+/davila7/claude-code-templates
+
+
+research-grants
+<100
+Trust Score: 7.2
+Write competitive research proposals for NSF, NIH, DOE, DARPA, and Taiwan NSTC. Agency-specific formatting, review criteria, budget preparation, broader impacts, significance statements, innovation narratives, and compliance with submission requirements.
+
+/k-dense-ai/claude-scientific-skills
+
+
+system-prompts
+Trust Score: 9.4
+Write system prompts, tool docs, and agent definitions. Combines research-backed prompt engineering (+15-30% measured improvements) with project XML conventions. Covers tag hierarchy, structural templates, high-impact interventions, anti-patterns.
+
+/can1357/oh-my-pi
+
+
+monetizing-innovation
+Use when asked about "pricing strategy", "willingness to pay", "value metric", "packaging tiers", "good better best pricing", "subscription vs usage pricing", or "price before product". Helps design products customers will pay for and choose pricing models that capture value. Based on Madhavan Ramanujam's Monetizing Innovation framework from Simon-Kucher.
+
+/wdavidturner/product-skills
+
+
+ai-native-development
+Trust Score: 5.1
+Build AI-first applications with RAG pipelines, embeddings, vector databases, agentic workflows, and LLM integration. Master prompt engineering, function calling, streaming responses, and cost optimization for 2025+ AI development.
+
+/ariegoldkin/ai-agent-hub
+
+
+bmad-cis-innovation-strategy
+Trust Score: 9.4
+Identify disruption opportunities and architect business model innovation. Use when the user says "lets create an innovation strategy" or "I want to find disruption opportunities"
+
+/redhat-cop/vault-config-operator
+
+
+hunt-research-system-and-tradecraft
+Trust Score: 6.9
+Research system internals and adversary tradecraft to ground a threat hunt in real system behavior and realistic abuse patterns. Use this skill at the start of hunt planning, when you are given a high-level hunt topic but lack a clear understanding of how the system normally operates or how adversaries are known to abuse it. This skill informs early hunt direction by producing candidate abuse patterns, key assumptions, and cited sources, and should be used before defining a concrete hunt hypothesis or selecting data sources.
+
+/otrf/threathunter-playbook
+
+
+ai-sdk-development
+Trust Score: 6.4
+TRIGGER when working with ai-sdk which is Laravel official first-party AI SDK. Activate when building, editing AI agents, chatbots, text generation, image generation, audio/TTS, transcription/STT, embeddings, RAG, vector stores, reranking, structured output, streaming, conversation memory, tools, queueing, broadcasting, and provider failover across OpenAI, Anthropic, Gemini, Azure, Groq, xAI, DeepSeek, Mistral, Ollama, ElevenLabs, Cohere, Jina, and VoyageAI. Invoke when the user references ai-sdk, the `Laravel\Ai\` namespace, or this project's AI features — not for Prism PHP or other AI packages used directly.
+
+/m3ue/m3u-editor

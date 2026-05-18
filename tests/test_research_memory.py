@@ -35,7 +35,10 @@ async def test_recall_by_keyword_overlap():
     await mem.store(_entry("Deep learning requires large datasets", topic="ML"))
     results = await mem.recall("sleep memory consolidation")
     assert len(results) >= 1
-    assert "sleep" in results[0].statement.lower() or "memory" in results[0].statement.lower()
+    assert (
+        "sleep" in results[0].statement.lower()
+        or "memory" in results[0].statement.lower()
+    )
 
 
 @pytest.mark.asyncio

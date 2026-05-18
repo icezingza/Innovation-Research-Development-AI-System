@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-api
+  labels:
+    app: {{ .Chart.Name }}
+    tier: backend
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        tier: backend
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            # Inject air-gapped configuration
+            - name: AIRGAP_MODE
+              value: "true"
+            - name: QDRANT_URL
+              value: {{ .Values.config.qdrant_url | quote }}
+            - name: NEO4J_URI
+              value: {{ .Values.config.neo4j_uri | quote }}
+            - name: REDIS_URL
+              value: {{ .Values.config.redis_url | quote }}
+            - name: RAY_CLUSTER_URL
+              value: {{ .Values.config.ray_cluster_url | quote }}
+            {{- if .Values.env }}
+            {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

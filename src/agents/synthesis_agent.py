@@ -68,7 +68,9 @@ class SynthesisAgent(BaseAgent):
         for _, h in scored:
             all_evidence.extend(h.get("evidence", []))
 
-        conclusion = best_hypothesis.get("statement", f"Synthesized finding for: {goal}")
+        conclusion = best_hypothesis.get(
+            "statement", f"Synthesized finding for: {goal}"
+        )
 
         if self._inference is not None and self._inference.enabled:
             hyp_text = "\n".join(

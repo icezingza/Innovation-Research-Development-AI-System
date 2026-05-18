@@ -1,4 +1,5 @@
 """Tests for GoldenBayesian confidence updater."""
+
 import math
 
 
@@ -43,7 +44,9 @@ class TestUpdateConfidence:
     def test_contradiction_uses_inv_phi_damping(self) -> None:
         prior = 0.8
         evidence = 0.5
-        result = GoldenBayesian.update_confidence(prior, evidence, is_contradiction=True)
+        result = GoldenBayesian.update_confidence(
+            prior, evidence, is_contradiction=True
+        )
         expected = max(0.0, prior - evidence * INV_PHI)
         assert abs(result - expected) < 1e-9
 

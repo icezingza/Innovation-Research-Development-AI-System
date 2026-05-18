@@ -47,9 +47,7 @@ class GovernanceAuditLog:
                 await self._redis._client.lpush(_AUDIT_REDIS_KEY, payload)
                 await self._redis._client.expire(_AUDIT_REDIS_KEY, _AUDIT_TTL_SECONDS)
             except Exception as exc:
-                logger.warning(
-                    "audit_redis_write_failed", extra={"error": str(exc)}
-                )
+                logger.warning("audit_redis_write_failed", extra={"error": str(exc)})
 
         logger.info(
             "governance_audit",
@@ -64,9 +62,7 @@ class GovernanceAuditLog:
     async def get_recent(self, limit: int = 100) -> list[AuditEntry]:
         if self._redis is not None:
             try:
-                raw = await self._redis._client.lrange(
-                    _AUDIT_REDIS_KEY, 0, limit - 1
-                )
+                raw = await self._redis._client.lrange(_AUDIT_REDIS_KEY, 0, limit - 1)
                 entries: list[AuditEntry] = []
                 for item in raw:
                     try:
@@ -76,8 +72,6 @@ class GovernanceAuditLog:
                         continue
                 return entries
             except Exception as exc:
-                logger.warning(
-                    "audit_redis_read_failed", extra={"error": str(exc)}
-                )
+                logger.warning("audit_redis_read_failed", extra={"error": str(exc)})
 
         return list(reversed(self._buffer[-limit:]))

@@ -1,4 +1,5 @@
 """Tests for AgentSpawner dynamic agent creation."""
+
 import pytest
 
 from src.agents.critique_agent import CritiqueAgent

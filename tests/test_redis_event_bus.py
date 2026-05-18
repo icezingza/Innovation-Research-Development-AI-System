@@ -1,4 +1,5 @@
 """Tests for RedisEventBus and create_event_bus factory."""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
