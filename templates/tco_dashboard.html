@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IRD-AI OS — TCO & ROI Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0a0a0f;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #818cf8, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 0.875rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #818cf8;
+    }
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: #475569;
+      margin-top: 0.25rem;
+    }
+    .breakeven-banner {
+      background: linear-gradient(135deg, #052e16, #14532d);
+      border: 1px solid #16a34a;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .breakeven-icon { font-size: 1.5rem; }
+    .breakeven-text { font-size: 1rem; font-weight: 600; color: #4ade80; }
+    .breakeven-detail { font-size: 0.8rem; color: #86efac; margin-top: 0.2rem; }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .chart-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .chart-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+    }
+    .benchmark-section {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .benchmark-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    thead tr { border-bottom: 1px solid #1e293b; }
+    th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      color: #475569;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+    }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #0f172a; }
+    tbody tr:hover { background: #1e293b22; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-fintech { background: #1e3a5f; color: #60a5fa; }
+    .badge-health  { background: #1e3535; color: #34d399; }
+    .badge-legal   { background: #3b1f4a; color: #c084fc; }
+    .speedup-value { color: #fbbf24; font-weight: 700; }
+    .loading { text-align: center; padding: 2rem; color: #475569; }
+    .error-msg { color: #f87171; text-align: center; padding: 1rem; }
+    .tco-note {
+      font-size: 0.75rem;
+      color: #475569;
+      margin-top: 0.75rem;
+      border-top: 1px solid #1e293b;
+      padding-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>IRD-AI OS — TCO &amp; ROI Dashboard</h1>
+  <p class="subtitle">Investor-Grade Performance Benchmarks &amp; Total Cost of Ownership Analysis</p>
+
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Speedup Factor</div>
+      <div class="kpi-value" id="kpi-speedup">—</div>
+      <div class="kpi-sub">vs. manual industry baseline</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">12-Month Cloud Savings</div>
+      <div class="kpi-value" id="kpi-savings">—</div>
+      <div class="kpi-sub">on-premise vs. cloud API equivalent</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Break-Even Month</div>
+      <div class="kpi-value" id="kpi-breakeven">—</div>
+      <div class="kpi-sub">capital payback period</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Time Reduction</div>
+      <div class="kpi-value" id="kpi-time-reduction">—</div>
+      <div class="kpi-sub">across all benchmark tasks</div>
+    </div>
+  </div>
+
+  <div class="breakeven-banner" id="breakeven-banner" style="display:none;">
+    <span class="breakeven-icon">✅</span>
+    <div>
+      <div class="breakeven-text" id="breakeven-headline"></div>
+      <div class="breakeven-detail" id="breakeven-detail"></div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">12-Month Cumulative TCO Comparison</div>
+      <canvas id="tco-chart" height="220"></canvas>
+      <div class="tco-note">
+        On-Premise: $8,000 capex + $1,200/mo operational &nbsp;|&nbsp;
+        Cloud API Equivalent: $4,800/mo
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Monthly Net Savings: On-Premise vs. Cloud</div>
+      <canvas id="savings-chart" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:2rem;">
+    <div class="chart-title">Domain Speedup Comparison (x faster than manual)</div>
+    <canvas id="speedup-chart" height="140"></canvas>
+  </div>
+
+  <div class="benchmark-section">
+    <div class="benchmark-title">Benchmark Results — Business KPI Detail</div>
+    <div id="benchmark-table-container">
+      <div class="loading">Loading benchmark data…</div>
+    </div>
+  </div>
+
+  <script>
+    // TCO model constants
+    const MONTHLY_ON_PREMISE = 1200;
+    const MONTHLY_CLOUD_BASE = 4800;
+    const HARDWARE_CAPEX = 8000;
+
+    function buildTcoSeries(months) {
+      const labels = [];
+      const onPrem = [];
+      const cloud = [];
+      const savings = [];
+      let breakevenMonth = null;
+
+      for (let m = 1; m <= months; m++) {
+        labels.push('M' + m);
+        const op = HARDWARE_CAPEX + MONTHLY_ON_PREMISE * m;
+        const cl = MONTHLY_CLOUD_BASE * m;
+        onPrem.push(op);
+        cloud.push(cl);
+        savings.push(cl - op);
+        if (breakevenMonth === null && cl > op) {
+          breakevenMonth = m;
+        }
+      }
+      return { labels, onPrem, cloud, savings, breakevenMonth };
+    }
+
+    function formatCurrency(n) {
+      return '$' + Math.round(n).toLocaleString('en-US');
+    }
+
+    function renderTcoCharts(tco) {
+      const { labels, onPrem, cloud, savings, breakevenMonth } = tco;
+
+      // KPI: savings at month 12
+      const finalSavings = cloud[11] - onPrem[11];
+      document.getElementById('kpi-savings').textContent = formatCurrency(finalSavings);
+
+      // KPI: break-even
+      const beEl = document.getElementById('kpi-breakeven');
+      if (breakevenMonth) {
+        beEl.textContent = 'Month ' + breakevenMonth;
+      } else {
+        beEl.textContent = '>12mo';
+      }
+
+      // Break-even banner
+      if (breakevenMonth) {
+        const banner = document.getElementById('breakeven-banner');
+        banner.style.display = 'flex';
+        document.getElementById('breakeven-headline').textContent =
+          'Capital payback achieved at Month ' + breakevenMonth;
+        const savingAtBreak = cloud[breakevenMonth - 1] - onPrem[breakevenMonth - 1];
+        document.getElementById('breakeven-detail').textContent =
+          'Cumulative net advantage: ' + formatCurrency(savingAtBreak) + ' by month ' + breakevenMonth;
+      }
+
+      // TCO line chart
+      new Chart(document.getElementById('tco-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'On-Premise Cumulative',
+              data: onPrem,
+              borderColor: '#818cf8',
+              backgroundColor: '#818cf820',
+              fill: true,
+              tension: 0.3,
+            },
+            {
+              label: 'Cloud API Cumulative',
+              data: cloud,
+              borderColor: '#f87171',
+              backgroundColor: '#f8717120',
+              fill: true,
+              tension: 0.3,
+            },
+          ],
+        },
+        options: {
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { ticks: { color: '#475569' }, grid: { color: '#1e293b' } },
+            y: {
+              ticks: { color: '#475569', callback: v => '$' + (v / 1000).toFixed(0) + 'k' },
+              grid: { color: '#1e293b' },
+            },
+          },
+        },
+      });
+
+      // Monthly savings bar chart
+      new Chart(document.getElementById('savings-chart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Net Monthly Advantage ($)',
+              data: savings.map((_, i) => (i === 0 ? cloud[0] - onPrem[0] : cloud[i] - cloud[i-1] - (onPrem[i] - onPrem[i-1]))),
+              backgroundColor: savings.map(v => v >= 0 ? '#4ade8088' : '#f8717188'),
+              borderColor: savings.map(v => v >= 0 ? '#4ade80' : '#f87171'),
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { ticks: { color: '#475569' }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#475569' }, grid: { color: '#1e293b' } },
+          },
+        },
+      });
+    }
+
+    function renderSpeedupChart(benchData) {
+      const domainColors = { fintech: '#60a5fa', health: '#34d399', legal: '#c084fc' };
+      const labels = [];
+      const values = [];
+      const colors = [];
+
+      for (const [domain, tasks] of Object.entries(benchData)) {
+        for (const t of tasks) {
+          labels.push(t.task_id.toUpperCase());
+          values.push(t.speedup_factor);
+          colors.push(domainColors[domain] || '#94a3b8');
+        }
+      }
+
+      new Chart(document.getElementById('speedup-chart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Speedup Factor (x)',
+              data: values,
+              backgroundColor: colors.map(c => c + '88'),
+              borderColor: colors,
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { ticks: { color: '#475569' }, grid: { color: '#1e293b' } },
+            y: {
+              ticks: { color: '#475569', callback: v => v + 'x' },
+              grid: { color: '#1e293b' },
+            },
+          },
+        },
+      });
+    }
+
+    function renderBenchmarkTable(benchData) {
+      const container = document.getElementById('benchmark-table-container');
+      container.textContent = '';
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Domain', 'Task', 'Description', 'Baseline', 'AI Time', 'Speedup', 'Time Saved', 'KPI Statement'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      for (const [domain, tasks] of Object.entries(benchData)) {
+        for (const t of tasks) {
+          const tr = document.createElement('tr');
+
+          const tdDomain = document.createElement('td');
+          const badge = document.createElement('span');
+          badge.className = 'badge badge-' + domain;
+          badge.textContent = domain;
+          tdDomain.appendChild(badge);
+          tr.appendChild(tdDomain);
+
+          const tdId = document.createElement('td');
+          tdId.textContent = t.task_id.toUpperCase();
+          tr.appendChild(tdId);
+
+          const tdDesc = document.createElement('td');
+          tdDesc.textContent = t.description;
+          tr.appendChild(tdDesc);
+
+          const tdBase = document.createElement('td');
+          tdBase.textContent = t.baseline_hours + 'h';
+          tr.appendChild(tdBase);
+
+          const tdAi = document.createElement('td');
+          tdAi.textContent = t.estimated_ai_minutes + 'min';
+          tr.appendChild(tdAi);
+
+          const tdSpeedup = document.createElement('td');
+          const speedupSpan = document.createElement('span');
+          speedupSpan.className = 'speedup-value';
+          speedupSpan.textContent = t.speedup_factor + 'x';
+          tdSpeedup.appendChild(speedupSpan);
+          tr.appendChild(tdSpeedup);
+
+          const tdReduction = document.createElement('td');
+          tdReduction.textContent = t.time_reduction_pct + '%';
+          tr.appendChild(tdReduction);
+
+          const tdKpi = document.createElement('td');
+          tdKpi.textContent = t.kpi_statement;
+          tr.appendChild(tdKpi);
+
+          tbody.appendChild(tr);
+        }
+      }
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    function updateKpiFromBench(benchData) {
+      let total = 0;
+      let sumSpeedup = 0;
+      let sumReduction = 0;
+      for (const tasks of Object.values(benchData)) {
+        for (const t of tasks) {
+          sumSpeedup += t.speedup_factor;
+          sumReduction += t.time_reduction_pct;
+          total++;
+        }
+      }
+      if (total > 0) {
+        document.getElementById('kpi-speedup').textContent = (sumSpeedup / total).toFixed(1) + 'x';
+        document.getElementById('kpi-time-reduction').textContent = (sumReduction / total).toFixed(1) + '%';
+      }
+    }
+
+    async function loadDashboard() {
+      // Render TCO charts immediately (no API needed)
+      const tco = buildTcoSeries(12);
+      renderTcoCharts(tco);
+
+      // Fetch benchmark results
+      try {
+        const resp = await fetch('/benchmarks/results');
+        if (!resp.ok) {
+          throw new Error('HTTP ' + resp.status);
+        }
+        const data = await resp.json();
+        const benchData = data.results || {};
+        updateKpiFromBench(benchData);
+        renderSpeedupChart(benchData);
+        renderBenchmarkTable(benchData);
+      } catch (err) {
+        const container = document.getElementById('benchmark-table-container');
+        container.textContent = '';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'error-msg';
+        errDiv.textContent = 'Could not load benchmark data: ' + err.message + '. Ensure the API server is running.';
+        container.appendChild(errDiv);
+
+        // Still render placeholder speedup chart
+        renderSpeedupChart({});
+        document.getElementById('kpi-speedup').textContent = 'API offline';
+        document.getElementById('kpi-time-reduction').textContent = 'API offline';
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

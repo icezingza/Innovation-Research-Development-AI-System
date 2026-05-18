@@ -1,8 +1,11 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src.orchestration.debate_runtime import DebateResult, DebateRuntime
+
+# Shared coroutine that bypasses adaptive fast-track so full debate loop runs
+_HIGH_COMPLEXITY = AsyncMock(return_value={"complexity_score": 7, "recommended_depth": 3})
 
 
 @pytest.mark.asyncio
@@ -17,7 +20,8 @@ async def test_debate_runtime_produces_result():
 @pytest.mark.asyncio
 async def test_debate_runtime_has_at_least_one_round():
     runtime = DebateRuntime()
-    result = await runtime.debate("Coffee improves focus", max_rounds=2)
+    with patch.object(runtime._adaptive_engine, "evaluate_task_complexity", _HIGH_COMPLEXITY):
+        result = await runtime.debate("Coffee improves focus", max_rounds=2)
     assert result.total_rounds >= 1
     assert len(result.rounds) == result.total_rounds
 
@@ -60,14 +64,16 @@ async def test_debate_runtime_records_quality_scores():
 @pytest.mark.asyncio
 async def test_debate_runtime_duration_is_positive():
     runtime = DebateRuntime()
-    result = await runtime.debate("Hypothesis Z")
+    with patch.object(runtime._adaptive_engine, "evaluate_task_complexity", _HIGH_COMPLEXITY):
+        result = await runtime.debate("Hypothesis Z")
     assert result.duration_seconds > 0
 
 
 @pytest.mark.asyncio
 async def test_debate_runtime_with_llm_disabled_uses_heuristic():
     runtime = DebateRuntime(inference_router=None)
-    result = await runtime.debate("Caffeine enhances alertness")
+    with patch.object(runtime._adaptive_engine, "evaluate_task_complexity", _HIGH_COMPLEXITY):
+        result = await runtime.debate("Caffeine enhances alertness")
     assert result.total_rounds >= 1
     for r in result.rounds:
         assert "Supporting evidence" in r.proponent.argument or r.proponent.argument
@@ -89,7 +95,8 @@ async def test_circuit_breaker_triggers_on_stale_debate():
             return ("The mechanism always produces the observed effect.", 0.6)
         return ("The mechanism never produces the observed effect.", 0.5)
 
-    with patch.object(runtime, "_generate", new=stale_generate):
+    with patch.object(runtime, "_generate", new=stale_generate), \
+         patch.object(runtime._adaptive_engine, "evaluate_task_complexity", _HIGH_COMPLEXITY):
         result = await runtime.debate("Stale hypothesis", max_rounds=3)
     assert result.convergence_reason == "circuit_breaker"
     assert result.converged is False

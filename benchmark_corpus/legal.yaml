@@ -1,0 +1,38 @@
+domain: legal
+label: "Legal Intelligence"
+tasks:
+  - id: lg-001
+    description: "Contract clause extraction and risk flagging from 50-page agreement"
+    query: "Extract all material obligations, limitation of liability clauses, indemnification provisions, termination triggers, and IP ownership terms with risk severity ratings"
+    baseline_hours: 16
+    estimated_ai_minutes: 4
+    speedup_label: "vs. senior associate (2 days)"
+    kpi_category: "Contract Intelligence"
+    baseline_source: "Deloitte Legal Operations Benchmark 2024"
+
+  - id: lg-002
+    description: "Regulatory compliance gap analysis across 12 PDPA/GDPR requirements"
+    query: "Assess organizational data processing practices against PDPA Thailand and GDPR requirements: identify gaps, remediation priorities, and DPO action items"
+    baseline_hours: 200
+    estimated_ai_minutes: 18
+    speedup_label: "vs. compliance team (1 week)"
+    kpi_category: "Regulatory Compliance"
+    baseline_source: "IAPP Privacy Operations Report 2023"
+
+  - id: lg-003
+    description: "Case law synthesis for M&A dispute litigation strategy"
+    query: "Synthesize relevant Thai and international precedents on MAC clause enforcement, earn-out disputes, and warranty claim timelines to inform litigation strategy"
+    baseline_hours: 72
+    estimated_ai_minutes: 9
+    speedup_label: "vs. litigation research team"
+    kpi_category: "Litigation Intelligence"
+    baseline_source: "Thomson Reuters Legal Benchmark 2024"
+
+  - id: lg-004
+    description: "Cross-jurisdictional AML regulation mapping for Southeast Asia"
+    query: "Map AML/CFT obligations across Thailand, Singapore, Malaysia, and Vietnam: identify jurisdictional conflicts, reporting threshold differences, and beneficial ownership requirements"
+    baseline_hours: 160
+    estimated_ai_minutes: 14
+    speedup_label: "vs. regulatory affairs team"
+    kpi_category: "Regulatory Mapping"
+    baseline_source: "FATF APAC Compliance Survey 2024"

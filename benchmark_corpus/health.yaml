@@ -1,0 +1,38 @@
+domain: health
+label: "Healthcare Intelligence"
+tasks:
+  - id: hl-001
+    description: "Adverse event pattern extraction from Phase III clinical trial reports"
+    query: "Extract all adverse events, serious adverse events, dose-limiting toxicities, and safety signals from clinical trial documentation for regulatory submission"
+    baseline_hours: 96
+    estimated_ai_minutes: 10
+    speedup_label: "vs. medical reviewer team"
+    kpi_category: "Clinical Safety"
+    baseline_source: "FDA Regulatory Review Benchmark 2023"
+
+  - id: hl-002
+    description: "Systematic literature review synthesis from 200 oncology papers"
+    query: "Synthesize evidence base for checkpoint inhibitor efficacy in triple-negative breast cancer: response rates, progression-free survival, and biomarker correlations"
+    baseline_hours: 336
+    estimated_ai_minutes: 15
+    speedup_label: "vs. research team (2 weeks)"
+    kpi_category: "Evidence Synthesis"
+    baseline_source: "NEJM Research Operations Benchmark 2024"
+
+  - id: hl-003
+    description: "Drug-drug interaction signal identification from pharmacovigilance database"
+    query: "Identify novel drug-drug interaction signals, contraindication clusters, and population-specific risk factors from post-market surveillance data"
+    baseline_hours: 72
+    estimated_ai_minutes: 5
+    speedup_label: "vs. pharmacovigilance analyst"
+    kpi_category: "Pharmacovigilance"
+    baseline_source: "WHO VigiBase Analytics Report 2023"
+
+  - id: hl-004
+    description: "Clinical guideline gap analysis across 15 treatment protocols"
+    query: "Compare current institutional treatment protocols against WHO and NCCN guidelines: identify deviations, outdated recommendations, and evidence quality gaps"
+    baseline_hours: 60
+    estimated_ai_minutes: 7
+    speedup_label: "vs. clinical quality team"
+    kpi_category: "Quality Assurance"
+    baseline_source: "Joint Commission Benchmark Study 2024"

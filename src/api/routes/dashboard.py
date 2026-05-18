@@ -25,3 +25,9 @@ async def roi_dashboard() -> FileResponse:
 async def finops_dashboard(tenant_id: str) -> FileResponse:
     """FinOps quota + cost dashboard. tenant_id from URL; JS extracts via window.location."""
     return FileResponse(TEMPLATES_DIR / "finops_dashboard.html", media_type="text/html")
+
+
+@router.get("/tco", response_class=HTMLResponse)
+async def tco_dashboard() -> FileResponse:
+    """TCO & ROI investor dashboard — benchmark KPIs + 12-month cost comparison."""
+    return FileResponse(TEMPLATES_DIR / "tco_dashboard.html", media_type="text/html")
