@@ -27,9 +27,7 @@ class FinOpsPredictor:
         """
         self._cost_per_1k = cost_per_1k_tokens
 
-    def forecast(
-        self, history: list[int], periods_ahead: int = 1
-    ) -> ForecastResult:
+    def forecast(self, history: list[int], periods_ahead: int = 1) -> ForecastResult:
         """Forecast future usage based on historical data.
 
         Args:

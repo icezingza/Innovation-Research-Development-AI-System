@@ -52,8 +52,10 @@ configure_tracing()
 
 
 async def _probe(name: str, coro, errors: dict) -> bool:
+    import asyncio
+
     try:
-        await coro
+        await asyncio.wait_for(coro, timeout=2.0)
         logger.info("service_connected", extra={"service": name})
         return True
     except Exception as exc:
@@ -132,7 +134,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
     else:
         # Fallback to local SQLite for heuristic development/simulation mode
-        sqlite_url = "sqlite+aiosqlite:///cognition_dev.db"
+        import os
+
+        sqlite_url = os.getenv("SQLITE_URL", "sqlite+aiosqlite:///cognition_dev.db")
         logger.warning(f"postgres_unavailable_falling_back_to_sqlite: {sqlite_url}")
         engine = create_async_engine(sqlite_url, echo=False)
         from src.memory.schema import Base

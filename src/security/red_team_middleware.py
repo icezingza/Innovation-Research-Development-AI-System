@@ -51,9 +51,7 @@ class RedTeamMiddleware:
             try:
                 self._guard.check(text)
                 passed += 1
-                logger.debug(
-                    "red_team_passed", extra={"prompt_id": prompt_id}
-                )
+                logger.debug("red_team_passed", extra={"prompt_id": prompt_id})
                 if self._audit_log is not None:
                     await self._audit_log.record(
                         AuditEntry(

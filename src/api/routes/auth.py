@@ -22,9 +22,16 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(req.tenant_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid tenant_id format")
+
     # 1. ตรวจสอบ Tenant
     tenant_res = await db.execute(
-        select(Tenant).where(Tenant.id == req.tenant_id, Tenant.status == "active")
+        select(Tenant).where(Tenant.id == tenant_uuid, Tenant.status == "active")
     )
     tenant = tenant_res.scalars().first()
     if not tenant:
@@ -32,7 +39,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     # 2. ตรวจสอบ User ใน Tenant นั้น
     user_res = await db.execute(
-        select(User).where(User.email == req.email, User.tenant_id == req.tenant_id)
+        select(User).where(User.email == req.email, User.tenant_id == tenant_uuid)
     )
     user = user_res.scalars().first()
 

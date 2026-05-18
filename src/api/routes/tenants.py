@@ -183,13 +183,22 @@ async def get_tenant(
     raw_key = request.headers.get("X-API-Key", "")
     is_platform_admin = key_manager is not None and key_manager.validate(raw_key)
 
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
     caller_tenant_id = current_user.get("tenant_id", "")
-    if not is_platform_admin and caller_tenant_id != tenant_id:
+    if not is_platform_admin and caller_tenant_id != str(tenant_uuid):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid))
     tenant = result.scalars().first()
     if not tenant:
         raise HTTPException(
@@ -219,14 +228,23 @@ async def get_tenant_finops(
     """
     await RequireRole(["admin", "finance", "owner"])(current_user)
 
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
     # Tenant isolation: users can only access their own tenant's finops
     caller_tenant_id = current_user.get("tenant_id", "")
-    if caller_tenant_id != tenant_id:
+    if caller_tenant_id != str(tenant_uuid):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_uuid))
     tenant = result.scalars().first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -268,7 +286,7 @@ async def get_tenant_finops(
         recommendation = "Consider upgrading to Enterprise plan"
 
     return {
-        "tenant_id": tenant_id,
+        "tenant_id": str(tenant_uuid),
         "current_billing_period": now.strftime("%Y-%m"),
         "quota_limit": limit,
         "quota_used": used,
@@ -294,13 +312,28 @@ async def get_finops_forecast(
     """
     await RequireRole(["admin", "owner"])(current_user)
 
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
     from src.billing.finops_predictor import FinOpsPredictor
 
     placeholder_history = [10_000, 15_000, 13_000, 18_000, 20_000]
     predictor = FinOpsPredictor()
     forecast = predictor.forecast(placeholder_history, periods_ahead=periods_ahead)
     return {
-        "tenant_id": tenant_id,
+        "tenant_id": str(tenant_uuid),
         "forecast": forecast.model_dump(),
         "note": "history is placeholder; integrate quota_service for production data",
     }
@@ -320,6 +353,22 @@ async def get_tenant_roi(
     """
     await RequireRole(["admin", "finance", "auditor"])(current_user)
 
+    import uuid
+
+    try:
+        tenant_uuid = uuid.UUID(tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid tenant_id format"
+        )
+
+    # Tenant isolation
+    caller_tenant_id = current_user.get("tenant_id", "")
+    if caller_tenant_id != str(tenant_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
     # --- ดึงข้อมูลการใช้งานจาก DB (เดือนปัจจุบัน) ---
     now = datetime.utcnow()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
@@ -329,7 +378,7 @@ async def get_tenant_roi(
         select(func.count())
         .select_from(ResearchTask)
         .where(
-            ResearchTask.tenant_id == tenant_id,
+            ResearchTask.tenant_id == tenant_uuid,
             ResearchTask.created_at >= start_of_month,
         )
     )
@@ -337,7 +386,7 @@ async def get_tenant_roi(
 
     # ดึง usage จาก Redis
     quota_service = request.app.state.quota_service
-    api_calls_used = await quota_service.current_usage(tenant_id)
+    api_calls_used = await quota_service.current_usage(str(tenant_uuid))
 
     # Constants
     AVG_HUMAN_HOURS_PER_TASK = 2.0
@@ -363,7 +412,7 @@ async def get_tenant_roi(
     )
 
     return {
-        "tenant_id": tenant_id,
+        "tenant_id": str(tenant_uuid),
         "period": now.strftime("%Y-%m"),
         "tasks_completed": task_count,
         "api_calls_used": api_calls_used,

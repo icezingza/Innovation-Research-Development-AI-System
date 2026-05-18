@@ -14,6 +14,7 @@ def configure_tracing() -> None:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter,
         )
+
         provider.add_span_processor(
             BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint))
         )

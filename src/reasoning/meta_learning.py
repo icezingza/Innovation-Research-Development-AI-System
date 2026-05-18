@@ -44,6 +44,4 @@ class MetaLearningPipeline:
                 extra={"node_id": node_id, "source": source},
             )
         except Exception as exc:
-            logger.warning(
-                "meta_learning_ingest_failed", extra={"error": str(exc)}
-            )
+            logger.warning("meta_learning_ingest_failed", extra={"error": str(exc)})

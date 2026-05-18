@@ -39,9 +39,7 @@ class CMKManager:
         # In-memory fallback
         if tenant_id not in self._local:
             self._local[tenant_id] = Fernet.generate_key()
-            logger.info(
-                "cmk_key_created_local", extra={"tenant_id": tenant_id}
-            )
+            logger.info("cmk_key_created_local", extra={"tenant_id": tenant_id})
         return self._local[tenant_id]
 
     async def encrypt(self, tenant_id: str, plaintext: str) -> str:

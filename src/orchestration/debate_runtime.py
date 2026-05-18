@@ -184,15 +184,13 @@ class DebateRuntime:
                 break
 
         # Circuit breaker: stale debate detected → force Bayesian synthesis
-        circuit_breaker_triggered = (
-            not (bool(rounds) and rounds[-1].is_consistent)
-            and self._detect_circuit_breaker(rounds)
-        )
+        circuit_breaker_triggered = not (
+            bool(rounds) and rounds[-1].is_consistent
+        ) and self._detect_circuit_breaker(rounds)
         convergence_reason = ""
         if circuit_breaker_triggered:
             evidence_scores = [
-                (r.proponent.confidence + r.opponent.confidence) / 2
-                for r in rounds
+                (r.proponent.confidence + r.opponent.confidence) / 2 for r in rounds
             ]
             contradiction_flags = [not r.is_consistent for r in rounds]
             GoldenBayesian.batch_update(

@@ -5,7 +5,9 @@ from html import escape
 class AuditTrailExporter:
     """Formats reasoning trace events as Glass-Box audit artifacts."""
 
-    def export_json(self, task_id: str, events: list[dict], metadata: dict | None = None) -> dict:
+    def export_json(
+        self, task_id: str, events: list[dict], metadata: dict | None = None
+    ) -> dict:
         result = {
             "task_id": task_id,
             "total_events": len(events),
