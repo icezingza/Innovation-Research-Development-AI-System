@@ -8,6 +8,8 @@ from typing import Any, AsyncGenerator
 from src.agents.subagents.guardrail_resolver import ConflictResolverSubAgent
 from src.agents.subagents.legal_graph_explorer import LegalGraphExplorer
 from src.agents.subagents.meta_learner import MetaLearnerSubAgent
+from src.telemetry.instrumentation import CognitiveAttr, record_pdpa_outcome
+from src.telemetry.tracing import tracer
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +70,17 @@ class LegalSwarm:
         yield {"status": "phase_1", "msg": "LegalGraphExplorer: extracting risk clauses and PDPA triggers..."}
         explorer = LegalGraphExplorer(neo4j=self._neo4j)
         audit_result: dict[str, Any] = {}
-        async for chunk in explorer.execute(
-            {"query": effective_query, "contract_text": contract_text, "check_pdpa": True}
-        ):
-            if chunk.get("status") == "completed":
-                audit_result = chunk.get("insight", {})
-            yield {"status": "phase_1_stream", "chunk": chunk}
+        with tracer.start_as_current_span("legal.phase_1.contract_analysis") as p1_span:
+            p1_span.set_attribute(CognitiveAttr.DOMAIN, "legal")
+            p1_span.set_attribute(CognitiveAttr.PHASE, "contract_analysis")
+            p1_span.set_attribute(CognitiveAttr.RUN_ID, run_id)
+            async for chunk in explorer.execute(
+                {"query": effective_query, "contract_text": contract_text, "check_pdpa": True}
+            ):
+                if chunk.get("status") == "completed":
+                    audit_result = chunk.get("insight", {})
+                yield {"status": "phase_1_stream", "chunk": chunk}
+            record_pdpa_outcome(p1_span, audit_result.get("pdpa_status", "UNKNOWN"))
 
         yield {"status": "phase_1_complete", "audit_result": audit_result}
 

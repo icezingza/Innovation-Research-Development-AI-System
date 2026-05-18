@@ -31,3 +31,10 @@ async def finops_dashboard(tenant_id: str) -> FileResponse:
 async def tco_dashboard() -> FileResponse:
     """TCO & ROI investor dashboard — benchmark KPIs + 12-month cost comparison."""
     return FileResponse(TEMPLATES_DIR / "tco_dashboard.html", media_type="text/html")
+
+
+@router.get("/glass-box", response_class=HTMLResponse)
+async def glass_box_dashboard() -> FileResponse:
+    """Glass-Box auditor dashboard — reasoning traces, governance log, OTel status,
+    and client-side SHA-256 bundle hash verifier for PwC / Deloitte / internal risk teams."""
+    return FileResponse(TEMPLATES_DIR / "glass_box_dashboard.html", media_type="text/html")

@@ -10,6 +10,8 @@ from src.agents.subagents.fintech_retriever import FintechKnowledgeRetriever
 from src.agents.subagents.guardrail_resolver import ConflictResolverSubAgent
 from src.agents.subagents.meta_learner import MetaLearnerSubAgent
 from src.agents.subagents.red_team_guard import RedTeamGuardSubAgent
+from src.telemetry.instrumentation import CognitiveAttr, record_risk_outcome
+from src.telemetry.tracing import tracer
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,13 @@ class FintechSwarm:
         run_id = str(uuid.uuid4())
         started_at = time.time()
 
+        with tracer.start_as_current_span("fintech.analyze_risk") as span:
+            span.set_attribute(CognitiveAttr.SWARM, "FintechSwarm")
+            span.set_attribute(CognitiveAttr.TENANT_ID, self.tenant_id)
+            span.set_attribute(CognitiveAttr.DOMAIN, "fintech")
+            span.set_attribute(CognitiveAttr.RUN_ID, run_id)
+            span.set_attribute(CognitiveAttr.QUERY_LENGTH, len(query))
+
         yield {"status": "init", "run_id": run_id, "msg": "Fintech Swarm — Bank Risk Analysis starting..."}
 
         # ── Phase 0: Red Team Guard ──────────────────────────────────────────
@@ -92,12 +101,17 @@ class FintechSwarm:
             embedding_provider=self._embedding,
         )
         risk_assessment: dict[str, Any] = {}
-        async for chunk in retriever.execute(
-            {"query": query, "transaction_data": transaction_data or {}}
-        ):
-            if chunk.get("status") == "completed":
-                risk_assessment = chunk.get("insight", {})
-            yield {"status": "phase_1_stream", "chunk": chunk}
+        with tracer.start_as_current_span("fintech.phase_1.knowledge_retrieval") as p1_span:
+            p1_span.set_attribute(CognitiveAttr.DOMAIN, "fintech")
+            p1_span.set_attribute(CognitiveAttr.PHASE, "knowledge_retrieval")
+            p1_span.set_attribute(CognitiveAttr.RUN_ID, run_id)
+            async for chunk in retriever.execute(
+                {"query": query, "transaction_data": transaction_data or {}}
+            ):
+                if chunk.get("status") == "completed":
+                    risk_assessment = chunk.get("insight", {})
+                yield {"status": "phase_1_stream", "chunk": chunk}
+            record_risk_outcome(p1_span, risk_assessment.get("risk_level", "UNKNOWN"))
 
         yield {"status": "phase_1_complete", "risk_assessment": risk_assessment}
 
